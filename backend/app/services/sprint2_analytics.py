@@ -19,7 +19,7 @@ from app.models.models import Course, Student, User
 from app.models.academic_models import (
     AcademicTerm, AcademicProgram, AcademicTrack,
     StudentCourseAttempt, CoursePrerequisite,
-    AdvisingSession, StudyPlan, StudyPlanCourse,
+    AdvisingPlan, AdvisingPlanItem,
 )
 from app.models.sprint2_models import (
     ElectivePool, ElectivePoolCourse,
@@ -224,17 +224,22 @@ class AdvisingPlanService:
         Validate a submitted study plan against NMU rules.
         Checks: prerequisite eligibility, credit load, duplicate entries.
         Returns validation result with per-course status.
+
+        Note: "study plan" here maps onto the Sprint 1 Advising Structure
+        models (AdvisingPlan / AdvisingPlanItem), which already provide the
+        same fields (plan.id, plan.student_id, plan.term_id; item.course_id)
+        used by this validation routine.
         """
-        plan = db.query(StudyPlan).filter(
-            StudyPlan.id         == plan_id,
-            StudyPlan.student_id == student_id,
+        plan = db.query(AdvisingPlan).filter(
+            AdvisingPlan.id         == plan_id,
+            AdvisingPlan.student_id == student_id,
         ).first()
         if not plan:
             raise ValueError(f"Study plan {plan_id} not found for student {student_id}")
 
         plan_courses = (
-            db.query(StudyPlanCourse)
-            .filter(StudyPlanCourse.plan_id == plan_id)
+            db.query(AdvisingPlanItem)
+            .filter(AdvisingPlanItem.plan_id == plan_id)
             .all()
         )
 

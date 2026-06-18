@@ -16,6 +16,7 @@ from __future__ import annotations
 from sqlalchemy import (
     Column, Integer, SmallInteger, BigInteger, String, Text, Boolean,
     DateTime, Date, Numeric, ForeignKey, Enum, UniqueConstraint, CheckConstraint,
+    Index,
 )
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import relationship
@@ -86,12 +87,15 @@ def _vals(e):
 
 class PrerequisiteException(Base):
     __tablename__  = "prerequisite_exceptions"
-    __table_args__ = {"extend_existing": True}
+    __table_args__ = (
+        Index("ix_prereq_exceptions_student_course", "student_id", "course_id"),
+        {"extend_existing": True},
+    )
 
     id               = Column(BigInteger, primary_key=True, index=True)
     # FK targets: exact table names from models.py
-    student_id       = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"),  nullable=False)
-    course_id        = Column(Integer, ForeignKey("courses.id",  ondelete="CASCADE"),  nullable=False)
+    student_id       = Column(Integer, ForeignKey("students.id", ondelete="CASCADE"),  nullable=False, index=True)
+    course_id        = Column(Integer, ForeignKey("courses.id",  ondelete="CASCADE"),  nullable=False, index=True)
     waived_prereq_id = Column(Integer, ForeignKey("courses.id",  ondelete="CASCADE"),  nullable=False)
     granted_by       = Column(Integer, ForeignKey("users.id",    ondelete="SET NULL"))
     reason           = Column(Text, nullable=False)

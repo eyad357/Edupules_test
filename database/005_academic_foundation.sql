@@ -227,11 +227,21 @@ CREATE TABLE IF NOT EXISTS course_prerequisites (
     -- 'soft'  = advisory only (warning, not block)
     prereq_type     VARCHAR(10) NOT NULL DEFAULT 'hard',
     min_grade       NUMERIC(5,2) DEFAULT 60.00,  -- minimum passing grade required
+    -- Prerequisites sharing the same logic_group are combined via logic_type
+    -- (AND/OR). Default group 1 + AND = "all prerequisites required".
+    logic_group     SMALLINT    DEFAULT 1,
+    logic_type      VARCHAR(5)  DEFAULT 'AND',
     notes           TEXT,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     UNIQUE (course_id, prerequisite_id),
     CHECK (course_id <> prerequisite_id)
 );
+
+-- Additive: ensures the columns exist even on a database where this table
+-- was created before logic_group / logic_type were introduced.
+ALTER TABLE course_prerequisites
+    ADD COLUMN IF NOT EXISTS logic_group SMALLINT   DEFAULT 1,
+    ADD COLUMN IF NOT EXISTS logic_type  VARCHAR(5) DEFAULT 'AND';
 
 CREATE INDEX IF NOT EXISTS idx_prereq_course  ON course_prerequisites(course_id);
 CREATE INDEX IF NOT EXISTS idx_prereq_prereq  ON course_prerequisites(prerequisite_id);
@@ -384,8 +394,16 @@ CREATE TABLE IF NOT EXISTS grade_scale (
     counts_in_cgpa  BOOLEAN     DEFAULT TRUE,       -- F & FL count; W & P do not
     is_passing      BOOLEAN     DEFAULT TRUE,
     description     VARCHAR(50),
+    -- Distinguishes WHY a failing grade was given: 'academic' (F) vs
+    -- 'attendance' (FL). NULL for non-failing grades.
+    failure_type    VARCHAR(20),
     UNIQUE (program_id, letter_grade)
 );
+
+-- Additive: ensures the column exists on a database where grade_scale was
+-- created before failure_type was introduced.
+ALTER TABLE grade_scale
+    ADD COLUMN IF NOT EXISTS failure_type VARCHAR(20);
 
 CREATE INDEX IF NOT EXISTS idx_grade_scale_prog ON grade_scale(program_id);
 

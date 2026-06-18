@@ -2335,7 +2335,7 @@ def ta_report(
 
     # Current week attendance rates
     week_start = db.execute(text(
-        "SELECT DATE_TRUNC('week', NOW() - INTERVAL ':w weeks')::date AS ws"
+        "SELECT DATE_TRUNC('week', NOW() - (:w * INTERVAL '1 week'))::date AS ws"
     ), {"w": weeks_back}).scalar()
 
     att_this_week = db.execute(text("""

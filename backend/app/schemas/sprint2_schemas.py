@@ -170,6 +170,7 @@ class GraduationAuditHistoryRead(_Base):
     total_ch_earned:        int
     blocking_reasons:       Optional[Any] = None
     completed_requirements: Optional[Any] = None
+    missing_courses:        Optional[Any] = None
 
 
 # ═════════════════════════════════════════════════════════════════════════════
@@ -242,6 +243,7 @@ class AcademicOverrideRead(_Base):
     decision_reason: Optional[str]      = None
     rule_triggered:  Optional[str]      = None
     explanation:     Optional[str]      = None
+    metadata_json:   Optional[Any]      = None
     requested_at:    datetime
     reviewed_at:     Optional[datetime] = None
     expires_at:      Optional[datetime] = None

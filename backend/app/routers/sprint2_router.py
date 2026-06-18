@@ -33,7 +33,7 @@ from app.models.sprint2_models import (
 from app.schemas.sprint2_schemas import (
     CGPADetailResponse, CGPARecalcResponse,
     PrerequisiteCheckRequest, PrerequisiteCheckResponse,
-    PrerequisiteChainResponse, PrerequisiteChainNode,
+    PrerequisiteChainResponse, PrerequisiteNodeRead,
     PrerequisiteExceptionCreate, PrerequisiteExceptionRead,
     GraduationAuditResponse, GraduationAuditHistoryRead,
     CalendarPeriodCreate, CalendarPeriodRead, CalendarPeriodStatusResponse,
@@ -45,7 +45,7 @@ from app.schemas.sprint2_schemas import (
     AcademicNotificationCreate,
     DecisionLogRead,
     RbacPermissionRead, RolePermissionsResponse,
-    StudentTranscriptResponse, TranscriptRow,
+    StudentTranscriptResponse, TranscriptAttemptRow,
     CGPAVerificationRow, GradeScaleEntryRead,
 )
 from app.services.sprint2_services import (
@@ -223,7 +223,7 @@ def get_prerequisite_chain(course_id: int, db: Session = Depends(get_db)):
         course_code   = course.code,
         course_name   = course.name,
         plan_semester = course.plan_semester,
-        prerequisites = [PrerequisiteChainNode(**node) for node in chain],
+        prerequisites = [PrerequisiteNodeRead(**node) for node in chain],
     )
 
 
@@ -677,7 +677,7 @@ def get_student_transcript(student_id: int, db: Session = Depends(get_db)):
     for a in attempts:
         if not a.course or not a.term:
             continue
-        rows.append(TranscriptRow(
+        rows.append(TranscriptAttemptRow(
             attempt_id            = a.id,
             course_code           = a.course.code,
             course_name           = a.course.name,

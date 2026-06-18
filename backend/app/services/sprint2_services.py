@@ -512,12 +512,18 @@ class GraduationAuditService:
             .filter(StudentCourseAttempt.student_id == student_id, StudentCourseAttempt.result == "passed")
             .all()
         )
-        passed_ids   = {a.course_id for a in passed_attempts}
+        passed_ids = {a.course_id for a in passed_attempts}
+
+        # Single batched fetch of every passed course (was previously one
+        # query per attempt, repeated again per-check below).
+        passed_courses_by_id = {
+            c.id: c
+            for c in db.query(Course).filter(Course.id.in_(passed_ids)).all()
+        } if passed_ids else {}
         passed_codes = {
-            a.course_id: db.query(Course).filter(Course.id == a.course_id).first().code
-            for a in passed_attempts
-            if db.query(Course).filter(Course.id == a.course_id).first()
+            cid: c.code for cid, c in passed_courses_by_id.items()
         }
+        passed_code_set = set(passed_codes.values())
 
         blocking:   List[str] = []
         completed:  List[str] = []
@@ -559,12 +565,7 @@ class GraduationAuditService:
             completed.append(f"✓ All {core_required} core courses completed")
 
         # ── CHECK 3: Field Training 1 (CSE191) ───────────────────────────
-        ft1_ids  = {a.course_id for a in passed_attempts}
-        ft1_done = any(
-            db.query(Course).filter(Course.id == cid).first().code == "CSE191"
-            for cid in ft1_ids
-            if db.query(Course).filter(Course.id == cid).first()
-        )
+        ft1_done = "CSE191" in passed_code_set
         if not ft1_done:
             blocking.append("CSE191 (Field Training 1 in CS) not completed")
             missing_courses.append({"code": "CSE191", "name": "Field Training 1 in CS", "category": "field_training"})
@@ -572,11 +573,7 @@ class GraduationAuditService:
             completed.append("✓ CSE191 Field Training 1 completed")
 
         # ── CHECK 4: Field Training 2 (CSE292) ───────────────────────────
-        ft2_done = any(
-            db.query(Course).filter(Course.id == cid).first().code == "CSE292"
-            for cid in ft1_ids
-            if db.query(Course).filter(Course.id == cid).first()
-        )
+        ft2_done = "CSE292" in passed_code_set
         if not ft2_done:
             blocking.append("CSE292 (Field Training 2 in CS) not completed")
             missing_courses.append({"code": "CSE292", "name": "Field Training 2 in CS", "category": "field_training"})
@@ -584,11 +581,7 @@ class GraduationAuditService:
             completed.append("✓ CSE292 Field Training 2 completed")
 
         # ── CHECK 5: Graduation Project 1 (CSE493) ───────────────────────
-        gp1_done = any(
-            db.query(Course).filter(Course.id == cid).first().code == "CSE493"
-            for cid in passed_ids
-            if db.query(Course).filter(Course.id == cid).first()
-        )
+        gp1_done = "CSE493" in passed_code_set
         if not gp1_done:
             blocking.append("CSE493 (Graduation Project 1) not completed")
             missing_courses.append({"code": "CSE493", "name": "Graduation Project 1", "category": "graduation_project"})
@@ -596,11 +589,7 @@ class GraduationAuditService:
             completed.append("✓ CSE493 Graduation Project 1 completed")
 
         # ── CHECK 6: Graduation Project 2 (CSE494) ───────────────────────
-        gp2_done = any(
-            db.query(Course).filter(Course.id == cid).first().code == "CSE494"
-            for cid in passed_ids
-            if db.query(Course).filter(Course.id == cid).first()
-        )
+        gp2_done = "CSE494" in passed_code_set
         if not gp2_done:
             blocking.append("CSE494 (Graduation Project 2) not completed")
             missing_courses.append({"code": "CSE494", "name": "Graduation Project 2", "category": "graduation_project"})
@@ -878,25 +867,37 @@ class NotificationService:
         title   = NotificationService.render_template(template.subject_template, ctx)
         message = NotificationService.render_template(template.body_template, ctx)
 
-        notif = Notification(
-            user_id  = user.id,
-            title    = title,
-            message  = message,
-            type     = "system",
-            priority = template.priority or "medium",
-            read     = False,
-        )
-        db.add(notif)
-        db.flush()
+        try:
+            notif = Notification(
+                user_id  = user.id,
+                title    = title,
+                message  = message,
+                type     = "system",
+                priority = template.priority or "medium",
+                read     = False,
+            )
+            db.add(notif)
+            db.flush()
 
-        delivery = NotificationDeliveryLog(
-            notification_id = notif.id,
-            channel         = "in_app",
-            event_type      = event_type,
-            delivered       = True,
-        )
-        db.add(delivery)
-        db.commit()
+            delivery = NotificationDeliveryLog(
+                notification_id = notif.id,
+                channel         = "in_app",
+                event_type      = event_type,
+                delivered       = True,
+            )
+            db.add(delivery)
+            db.commit()
+        except Exception as exc:
+            db.rollback()
+            logger.error(
+                "Failed to send notification: student=%s event=%s", student_id, event_type,
+                exc_info=True,
+            )
+            # The notification row itself failed to commit, so there is no
+            # notification_id to attach a delivery-failure log to. Record
+            # the failure via logging only; callers receive None and can
+            # decide whether to retry.
+            return None
 
         logger.info("Notification sent: student=%s event=%s", student_id, event_type)
         return notif.id

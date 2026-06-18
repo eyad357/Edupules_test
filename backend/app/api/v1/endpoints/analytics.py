@@ -124,7 +124,7 @@ def gpa_trends(months: int = Query(6, ge=1, le=24), db: Session = Depends(get_db
             COUNT(*)                                                AS student_count
         FROM students
         WHERE enrollment_date IS NOT NULL
-          AND enrollment_date >= NOW() - INTERVAL ':months months'
+          AND enrollment_date >= NOW() - (:months * INTERVAL '1 month')
         GROUP BY month_date
         ORDER BY month_date
     """), {"months": months}).fetchall()
@@ -138,7 +138,7 @@ def gpa_trends(months: int = Query(6, ge=1, le=24), db: Session = Depends(get_db
                 ROUND(AVG(gpa)::numeric, 2)                      AS avg_gpa,
                 COUNT(*)                                         AS student_count
             FROM students
-            WHERE created_at >= NOW() - INTERVAL ':months months'
+            WHERE created_at >= NOW() - (:months * INTERVAL '1 month')
             GROUP BY month_date
             ORDER BY month_date
         """), {"months": months}).fetchall()
@@ -171,7 +171,7 @@ def risk_weekly_trends(weeks: int = Query(6, ge=1, le=24), db: Session = Depends
                 DATE_TRUNC('week', assessed_at) AS week_date,
                 risk_level
             FROM risk_assessments
-            WHERE assessed_at >= NOW() - INTERVAL ':weeks weeks'
+            WHERE assessed_at >= NOW() - (:weeks * INTERVAL '1 week')
             ORDER BY student_id, DATE_TRUNC('week', assessed_at), assessed_at DESC
         )
         SELECT
@@ -210,7 +210,7 @@ def risk_trends(months: int = Query(6, ge=1, le=24), db: Session = Depends(get_d
             risk_level,
             COUNT(*) AS count
         FROM risk_assessments
-        WHERE assessed_at >= NOW() - INTERVAL ':months months'
+        WHERE assessed_at >= NOW() - (:months * INTERVAL '1 month')
         GROUP BY month_date, risk_level
         ORDER BY month_date
     """), {"months": months}).fetchall()
@@ -276,7 +276,7 @@ def attendance_trends(weeks: int = Query(8, ge=1, le=24), db: Session = Depends(
                     / NULLIF(COUNT(*), 0) * 100, 1
             ) AS rate
         FROM attendances
-        WHERE date >= CURRENT_DATE - INTERVAL ':weeks weeks'
+        WHERE date >= CURRENT_DATE - (:weeks * INTERVAL '1 week')
         GROUP BY week_date
         ORDER BY week_date
     """), {"weeks": weeks}).fetchall()

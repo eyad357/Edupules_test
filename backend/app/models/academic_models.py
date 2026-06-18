@@ -164,6 +164,11 @@ class CoursePrerequisite(Base):
     prerequisite_id = Column(Integer, ForeignKey("courses.id", ondelete="CASCADE"), nullable=False)
     prereq_type     = Column(String(10), default="hard")
     min_grade       = Column(Numeric(5, 2), default=60.00)
+    # Logic grouping: prerequisites sharing the same logic_group are combined
+    # using logic_type ("AND"/"OR"). Default group 1 + AND preserves the
+    # original "all prerequisites required" behavior for existing rows.
+    logic_group     = Column(SmallInteger, default=1)
+    logic_type      = Column(String(5), default="AND")
     notes           = Column(Text)
     created_at      = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -302,6 +307,7 @@ class GradeScale(Base):
     counts_in_cgpa = Column(Boolean, default=True)
     is_passing     = Column(Boolean, default=True)
     description    = Column(String(50))
+    failure_type   = Column(String(20))
 
     program = relationship("AcademicProgram", back_populates="grade_scale")
 

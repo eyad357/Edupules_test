@@ -1,7 +1,11 @@
 -- ============================================================
 -- EduGuard AI — Sprint 2 Seed Data
--- File    : database/003_sprint2_seed.sql
--- Depends : 002_sprint2_academic_rules.sql already run
+-- File    : database/007_sprint2_seed.sql  (renumbered from 003 — see
+--           note below; original filename kept in git history)
+-- Depends : 005_academic_foundation.sql and 006_seed_courses.sql must
+--           already be run (this file requires academic_programs,
+--           academic_tracks, academic_terms, grade_scale, and
+--           course_prerequisites to already exist).
 -- Safe    : Fully idempotent — ON CONFLICT DO NOTHING / DO UPDATE
 -- Source  : ALL values derived exclusively from:
 --             Track_Courses_List__Original.pdf
@@ -27,7 +31,7 @@ INSERT INTO academic_programs (
     total_credit_hours, min_cgpa_grad, duration_years,
     is_active, description
 ) VALUES (
-    'NMU-CS-2024',
+    'CS',
     'Computer Science',
     'برنامج علوم الحاسب',
     134, 2.00, 4, TRUE,
@@ -42,19 +46,19 @@ INSERT INTO academic_programs (
 INSERT INTO academic_tracks (program_id, code, name, name_ar, is_active, description)
 SELECT
     ap.id,
-    'NMU-CS-SE',
+    'CS-SE',
     'Software Engineering',
     'هندسة البرمجيات',
     TRUE,
     'III. Software Engineering Track — NMU CS Program. 8 semesters, 134 CH.'
-FROM academic_programs ap WHERE ap.code = 'NMU-CS-2024'
+FROM academic_programs ap WHERE ap.code = 'CS'
 ON CONFLICT (code) DO NOTHING;
 
 -- Wire department to program
 UPDATE academic_programs ap
 SET department_id = d.id
 FROM departments d
-WHERE ap.code = 'NMU-CS-2024' AND d.code = 'CS'
+WHERE ap.code = 'CS' AND d.code = 'CS'
   AND ap.department_id IS NULL;
 
 -- ============================================================
@@ -91,7 +95,7 @@ FROM academic_programs ap,
     ('FL',  0.0::NUMERIC(3,2), TRUE,  FALSE, 'Fail (Absent)',      'attendance'),
     ('P',   0.0::NUMERIC(3,2), FALSE, TRUE,  'Pass (Non-Credit)',  NULL)
 ) AS gs(letter_grade, grade_points, counts_in_cgpa, is_passing, description, failure_type)
-WHERE ap.code = 'NMU-CS-2024'
+WHERE ap.code = 'CS'
 ON CONFLICT (program_id, letter_grade) DO NOTHING;
 
 -- ============================================================
@@ -147,7 +151,7 @@ SELECT
     c.lct, c.lab, c.tut, c.cnt, c.swl, c.ects,
     TRUE, TRUE, ap.id, at2.id
 FROM academic_programs ap
-JOIN academic_tracks at2 ON at2.code = 'NMU-CS-SE',
+JOIN academic_tracks at2 ON at2.code = 'CS-SE',
 (VALUES
     ('CSE014','Structured Programming',             3,'core',           1,1,2,3,0,5,150,6),
     ('PHY211','Physics II',                         3,'core',           1,1,2,2,0,4,150,6),
@@ -156,7 +160,7 @@ JOIN academic_tracks at2 ON at2.code = 'NMU-CS-SE',
     ('UE1',   'Elective University (1)',             2,'university_elective',1,1,2,0,0,2,90,4),
     ('UC2',   'University Requirement (2)',          2,'university_req', 1,1,2,0,0,2, 90,4)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code = 'NMU-CS-2024'
+WHERE ap.code = 'CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id = EXCLUDED.program_id, track_id = EXCLUDED.track_id,
     category = EXCLUDED.category, curriculum_level = EXCLUDED.curriculum_level,
@@ -171,7 +175,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE015','Object Oriented Programming',         3,'core',           1,2,2,3,0,5,150,6),
     ('CSE113','Electric & Electronic Circuits',      3,'core',           1,2,2,2,1,5,150,6),
@@ -180,7 +184,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('UC3',   'University Requirement (3)',           2,'university_req', 1,2,2,0,0,2, 90,4),
     ('UE2',   'Elective University Requirement (2)', 2,'university_elective',1,2,2,0,0,2,90,4)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -192,7 +196,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE111','Data Structures',                          3,'core',2,3,2,3,0,5,150,6),
     ('CSE131','Logic Design',                             3,'core',2,3,2,3,0,5,150,6),
@@ -201,7 +205,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('MAT231','Probability & Statistics',                 3,'core',2,3,2,2,0,4,150,6),
     ('MAT212','Linear Algebra',                           3,'core',2,3,2,0,2,4,150,6)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -213,7 +217,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE112','Design & Analysis of Algorithms',     3,'core',2,4,2,3,0,5,150,6),
     ('CSE132','Computer Architecture & Organization',3,'core',2,4,2,3,0,5,150,6),
@@ -222,7 +226,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('CSE315','Discrete Mathematics',                3,'core',2,4,2,0,2,4,150,6),
     ('UC4',   'University Requirement (4)',           2,'university_req',2,4,2,0,0,2,90,4)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -234,7 +238,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE211','Web Programming',                3,'core',3,5,2,3,0,5,150,6),
     ('CSE233','Operating Systems',              3,'core',3,5,2,3,0,5,150,6),
@@ -243,7 +247,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('AIE111','Artificial Intelligence',        3,'core',3,5,2,3,0,5,150,6),
     ('UC5',   'University Requirement (5)',      2,'university_req',3,5,2,0,0,2,90,4)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -255,7 +259,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE212','Theory of Computation & Compilers',3,'core',3,6,2,3,0,5,150,6),
     ('CSE292','Field Training 2 in Computer Science',2,'field_training',3,6,2,0,0,2,90,4),
@@ -265,7 +269,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('UC6',   'University Requirement (6)',         2,'university_req',3,6,2,0,0,2,90,4),
     ('UE3',   'Elective University (3)',            2,'university_elective',3,6,2,0,0,2,90,4)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -277,7 +281,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE454','Advanced Software Engineering',    3,'core',4,7,2,3,0,5,150,6),
     ('CSE475','Distributed Information Systems',  3,'core',4,7,2,3,0,5,150,6),
@@ -285,7 +289,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('CSE313','Mobile Development',               3,'core',4,7,2,3,0,5,150,6),
     ('UC7',   'University Requirement (7)',         2,'university_req',4,7,2,0,0,2,90,4)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -297,14 +301,14 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,c.credits,c.category,c.lvl,c.psem,c.lct,c.lab,c.tut,c.cnt,c.swl,c.ects,
     TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('CSE363','Cloud Computing',           3,'core',4,8,2,3,0,5,150,6),
     ('CSE494','Graduation Project 2',      2,'core',4,8,2,0,0,2, 90,4),
     ('AIE323','Data Mining',               3,'core',4,8,2,3,0,5,150,6),
     ('CSE312','Advanced Web Programming',  3,'core',4,8,2,3,0,5,150,6)
 ) AS c(code,name,credits,category,lvl,psem,lct,lab,tut,cnt,swl,ects)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category, curriculum_level=EXCLUDED.curriculum_level,
@@ -318,7 +322,7 @@ INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semes
     lct_hours, lab_hours, tut_hours, contact_hours, swl_hours, ects_credits,
     is_active, counts_in_cgpa, program_id, track_id)
 SELECT c.code,c.name,3,'elective',c.lvl,c.psem,2,3,0,5,150,6,TRUE,TRUE,ap.id,at2.id
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('ELE432','Digital Signal Processing',                 4,7),
     ('CSE271','Introduction to Parallel Computing',        3,7),
@@ -343,7 +347,7 @@ FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE',
     ('AIE425','Intelligent Recommender Systems',           4,8),
     ('CSE467','Client/Server Technologies & Applications', 4,8)
 ) AS c(code,name,lvl,psem)
-WHERE ap.code='NMU-CS-2024'
+WHERE ap.code='CS'
 ON CONFLICT (code) DO UPDATE SET
     program_id=EXCLUDED.program_id, track_id=EXCLUDED.track_id,
     category=EXCLUDED.category;
@@ -352,7 +356,7 @@ ON CONFLICT (code) DO UPDATE SET
 INSERT INTO courses (code, name, credits, category, is_pass_fail, counts_in_cgpa,
     is_active, program_id)
 SELECT 'LAN021','Language Course (Non-Credit)',0,'university_req',TRUE,FALSE,TRUE,ap.id
-FROM academic_programs ap WHERE ap.code='NMU-CS-2024'
+FROM academic_programs ap WHERE ap.code='CS'
 ON CONFLICT (code) DO NOTHING;
 
 -- ============================================================
@@ -371,15 +375,15 @@ SELECT ap.id, at2.id,
     1, 3, 3,
     '7,8',
     'Students select exactly 3: E1 in Semester 7, E2+E3 in Semester 8. Source: Track Courses List PDF.'
-FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='NMU-CS-SE'
-WHERE ap.code='NMU-CS-2024'
+FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE'
+WHERE ap.code='CS'
 ON CONFLICT (program_id, pool_code) DO NOTHING;
 
 -- Link all 22 elective courses to the pool
 INSERT INTO elective_pool_courses (pool_id, course_id)
 SELECT ep.id, c.id
 FROM elective_pools ep
-JOIN academic_programs ap ON ap.id = ep.program_id AND ap.code = 'NMU-CS-2024'
+JOIN academic_programs ap ON ap.id = ep.program_id AND ap.code = 'CS'
 JOIN courses c ON c.code IN (
     'ELE432','CSE271','CSE272','CSE281','CSE322','CSE344','CSE424','CSE426',
     'CSE453','CSE455','CSE464','CSE478','AIE231','AIE241','AIE314','AIE322',
@@ -520,7 +524,7 @@ INSERT INTO graduation_requirements (
 )
 SELECT ap.id, at2.id, r.cat, r.label, r.ch, r.courses, 2.00, r.notes
 FROM academic_programs ap
-JOIN academic_tracks at2 ON at2.code = 'NMU-CS-SE',
+JOIN academic_tracks at2 ON at2.code = 'CS-SE',
 (VALUES
     ('core',               'Core Courses',                          99,  34, 'All mandatory core courses in 8-semester plan'),
     ('elective',           'Track Electives (E1, E2, E3)',           9,   3, 'Exactly 3 from the 22-course SE elective pool'),
@@ -529,7 +533,7 @@ JOIN academic_tracks at2 ON at2.code = 'NMU-CS-SE',
     ('field_training',     'Field Training',                         4,   2, 'CSE191 (FT1) + CSE292 (FT2)'),
     ('graduation_project', 'Graduation Project',                     4,   2, 'CSE493 (GP1) + CSE494 (GP2)')
 ) AS r(cat, label, ch, courses, notes)
-WHERE ap.code = 'NMU-CS-2024'
+WHERE ap.code = 'CS'
 ON CONFLICT DO NOTHING;
 
 -- ============================================================
@@ -580,25 +584,53 @@ VALUES
 ON CONFLICT (event_type, channel) DO NOTHING;
 
 -- ============================================================
+-- updated_at TRIGGERS FOR SPRINT 2 TABLES
+-- ============================================================
+-- These four tables are created by SQLAlchemy's Base.metadata.create_all()
+-- at backend startup (see app/models/sprint2_models.py), not by a raw SQL
+-- migration file, so they aren't covered by 005_academic_foundation.sql's
+-- "SECTION 18" trigger loop. Their ORM columns already use
+-- onupdate=func.now(), which covers updates made through the ORM; this
+-- trigger is a defense-in-depth backstop for any future direct SQL UPDATE
+-- against these tables. to_regclass(...) guards make this a no-op (instead
+-- of an error) if this file is somehow run before the backend has created
+-- these tables.
+DO $$ DECLARE t TEXT; BEGIN
+    FOREACH t IN ARRAY ARRAY[
+        'academic_overrides', 'academic_calendar_periods',
+        'notification_preferences', 'rbac_permissions'
+    ] LOOP
+        IF to_regclass(t) IS NOT NULL THEN
+            EXECUTE format('
+                DROP TRIGGER IF EXISTS set_updated_at ON %I;
+                CREATE TRIGGER set_updated_at
+                BEFORE UPDATE ON %I
+                FOR EACH ROW EXECUTE FUNCTION trigger_set_updated_at();
+            ', t, t);
+        END IF;
+    END LOOP;
+END $$;
+
+-- ============================================================
 -- VERIFICATION QUERIES (uncomment to run after seeding)
 -- ============================================================
 -- SELECT COUNT(*) AS total_courses FROM courses
---   WHERE program_id = (SELECT id FROM academic_programs WHERE code='NMU-CS-2024');
+--   WHERE program_id = (SELECT id FROM academic_programs WHERE code='CS');
 -- Expected: 69
 
 -- SELECT category, COUNT(*) FROM courses
---   WHERE program_id = (SELECT id FROM academic_programs WHERE code='NMU-CS-2024')
+--   WHERE program_id = (SELECT id FROM academic_programs WHERE code='CS')
 --   GROUP BY category ORDER BY category;
 
 -- SELECT letter_grade, grade_points, is_passing, counts_in_cgpa, failure_type
 --   FROM grade_scale
---   WHERE program_id = (SELECT id FROM academic_programs WHERE code='NMU-CS-2024')
+--   WHERE program_id = (SELECT id FROM academic_programs WHERE code='CS')
 --   ORDER BY grade_points DESC;
 -- Expected: 14 rows
 
 -- SELECT COUNT(*) FROM course_prerequisites cp
 --   JOIN courses c ON c.id = cp.course_id
---   WHERE c.program_id = (SELECT id FROM academic_programs WHERE code='NMU-CS-2024');
+--   WHERE c.program_id = (SELECT id FROM academic_programs WHERE code='CS');
 -- Expected: ~35
 
 -- SELECT COUNT(*) FROM elective_pool_courses;

@@ -83,6 +83,19 @@ def _notif_col(**kw):
 # ═════════════════════════════════════════════════════════════════════════════
 # USER
 # ═════════════════════════════════════════════════════════════════════════════
+class Department(Base):
+    __tablename__  = "departments"
+    __table_args__ = {"extend_existing": True}
+
+    id                = Column(Integer, primary_key=True, index=True)
+    name              = Column(String(150), unique=True, nullable=False)
+    code              = Column(String(20), unique=True, nullable=False)
+    head_professor_id = Column(Integer)
+    description       = Column(Text)
+    created_at        = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at        = Column(DateTime(timezone=True), server_default=func.now())
+
+
 class User(Base):
     __tablename__  = "users"
     __table_args__ = {"extend_existing": True}

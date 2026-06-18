@@ -22,9 +22,29 @@ cd eduguard-ai
 # Create database
 createdb eduguard
 
-# Run schema
-psql -d eduguard -f database/schema.sql
+# Run the Sprint 0/1 schema and seed data, in order
+psql -d eduguard -f database/001_schema.sql
+psql -d eduguard -f database/002_seed.sql
+psql -d eduguard -f database/003_views.sql
+psql -d eduguard -f database/004_demo_users.sql
+
+# Sprint 1 academic foundation (programs, tracks, terms, prerequisites,
+# grade scale, advising plans, etc.)
+psql -d eduguard -f database/005_academic_foundation.sql
+psql -d eduguard -f database/006_seed_courses.sql
 ```
+
+> ⚠️ Do not run `database/schema.sql` for new setups — it is a stale,
+> Sprint-0-only snapshot kept for reference and does not include the
+> Sprint 1/2 academic tables.
+
+> ⚠️ `database/007_sprint2_seed.sql` seeds data into several tables
+> (`elective_pools`, `elective_pool_courses`, `notification_templates`,
+> `academic_calendar_periods`) that are created by the FastAPI app itself
+> on startup (via SQLAlchemy `Base.metadata.create_all()`), not by a SQL
+> file. **Start the backend at least once (step 3 below) before running
+> `007_sprint2_seed.sql`**, or that script will fail with
+> `relation "..." does not exist`.
 
 ### 3. Backend Setup
 ```bash
@@ -44,8 +64,14 @@ SECRET_KEY=your-super-secret-key-change-in-production
 DEBUG=True
 EOF
 
-# Start server
+# Start server (this also creates all Sprint 2 tables on first run)
 uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Once the server has started successfully at least once, run the Sprint 2
+seed data:
+```bash
+psql -d eduguard -f database/007_sprint2_seed.sql
 ```
 
 Backend will be available at: `http://localhost:8000`
