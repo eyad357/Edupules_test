@@ -1,0 +1,79 @@
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "questions"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "quiz_submissions"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "grade_records"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "audit_logs"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "course_sections"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "ta_grade_events"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "student_grade_aggregates"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "student_grade_versions"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "course_grade_weights"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "assignments"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "assignment_submissions"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "quiz_violations"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "quiz_sessions"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "attendance_sessions"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "attendance_scan_log"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "academic_programs"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "course_prerequisites"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "course_postrequisites"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "student_course_attempts"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "student_term_gpa"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "course_offerings"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "student_graduation_progress"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "advising_plans"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "advising_plan_items"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "course_eligibility_rules"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "import_jobs"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "academic_tracks"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "grade_scale"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "graduation_requirements"
+psql:database/002_seed.sql:23: NOTICE:  truncate cascades to table "import_errors"
+TRUNCATE TABLE
+ALTER SEQUENCE
+ALTER SEQUENCE
+INSERT 0 8
+INSERT 0 2
+INSERT 0 7
+INSERT 0 2
+INSERT 0 2
+INSERT 0 21
+INSERT 0 7
+INSERT 0 2
+psql:database/002_seed.sql:130: ERROR:  insert or update on table "teaching_assistants" violates foreign key constraint "teaching_assistants_professor_id_fkey"
+DETAIL:  Key (professor_id)=(1) is not present in table "professors".
+psql:database/002_seed.sql:163: ERROR:  insert or update on table "students" violates foreign key constraint "fk_student_advisor"
+DETAIL:  Key (advisor_id)=(1) is not present in table "advisors".
+psql:database/002_seed.sql:192: ERROR:  insert or update on table "courses" violates foreign key constraint "courses_professor_id_fkey"
+DETAIL:  Key (professor_id)=(1) is not present in table "professors".
+psql:database/002_seed.sql:218: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(1) is not present in table "students".
+psql:database/002_seed.sql:231: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(6) is not present in table "students".
+psql:database/002_seed.sql:243: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(9) is not present in table "students".
+psql:database/002_seed.sql:253: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(10) is not present in table "students".
+psql:database/002_seed.sql:265: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(11) is not present in table "students".
+psql:database/002_seed.sql:276: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(13) is not present in table "students".
+psql:database/002_seed.sql:288: ERROR:  insert or update on table "enrollments" violates foreign key constraint "enrollments_student_id_fkey"
+DETAIL:  Key (student_id)=(17) is not present in table "students".
+psql:database/002_seed.sql:335: ERROR:  insert or update on table "attendances" violates foreign key constraint "attendances_student_id_fkey"
+DETAIL:  Key (student_id)=(1) is not present in table "students".
+psql:database/002_seed.sql:430: ERROR:  insert or update on table "risk_assessments" violates foreign key constraint "risk_assessments_student_id_fkey"
+DETAIL:  Key (student_id)=(1) is not present in table "students".
+psql:database/002_seed.sql:440: ERROR:  insert or update on table "intervention_plans" violates foreign key constraint "intervention_plans_student_id_fkey"
+DETAIL:  Key (student_id)=(2) is not present in table "students".
+psql:database/002_seed.sql:453: ERROR:  insert or update on table "intervention_actions" violates foreign key constraint "intervention_actions_plan_id_fkey"
+DETAIL:  Key (plan_id)=(1) is not present in table "intervention_plans".
+psql:database/002_seed.sql:463: ERROR:  insert or update on table "quizzes" violates foreign key constraint "quizzes_course_id_fkey"
+DETAIL:  Key (course_id)=(1) is not present in table "courses".
+psql:database/002_seed.sql:476: ERROR:  insert or update on table "questions" violates foreign key constraint "questions_quiz_id_fkey"
+DETAIL:  Key (quiz_id)=(1) is not present in table "quizzes".
+INSERT 0 11
+psql:database/002_seed.sql:506: ERROR:  insert or update on table "activity_logs" violates foreign key constraint "activity_logs_student_id_fkey"
+DETAIL:  Key (student_id)=(1) is not present in table "students".
+INSERT 0 3
+psql:database/002_seed.sql:529: ERROR:  insert or update on table "announcements" violates foreign key constraint "announcements_course_id_fkey"
+DETAIL:  Key (course_id)=(1) is not present in table "courses".

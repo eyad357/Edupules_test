@@ -246,8 +246,8 @@ class CourseOffering(Base):
     course    = relationship("Course",       back_populates="offerings")
     term      = relationship("AcademicTerm", back_populates="course_offerings")
     plan_items = relationship("AdvisingPlanItem", back_populates="offering")
-
-
+    professor = relationship("Professor",back_populates="offerings"
+)
 # ═════════════════════════════════════════════════════════════════════════════
 # STUDENT COURSE ATTEMPTS  (transcript layer)
 # ═════════════════════════════════════════════════════════════════════════════

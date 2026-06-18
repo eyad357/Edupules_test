@@ -1,0 +1,171 @@
+psql:database/001_schema.sql:14: NOTICE:  extension "uuid-ossp" already exists, skipping
+CREATE EXTENSION
+psql:database/001_schema.sql:15: NOTICE:  extension "pg_trgm" already exists, skipping
+CREATE EXTENSION
+psql:database/001_schema.sql:26: NOTICE:  enum label "ta" already exists, skipping
+DO
+DO
+DO
+DO
+psql:database/001_schema.sql:46: NOTICE:  enum label "attendance" already exists, skipping
+DO
+psql:database/001_schema.sql:52: NOTICE:  enum label "excused" already exists, skipping
+DO
+DO
+DO
+DO
+psql:database/001_schema.sql:87: NOTICE:  relation "users" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:89: NOTICE:  relation "idx_users_email" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:90: NOTICE:  relation "idx_users_role" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:107: NOTICE:  relation "personal_access_tokens" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:110: NOTICE:  relation "idx_pat_tokenable" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:124: NOTICE:  relation "departments" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:146: NOTICE:  relation "students" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:148: NOTICE:  relation "idx_students_user_id" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:149: NOTICE:  relation "idx_students_department" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:150: NOTICE:  relation "idx_students_major" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:151: NOTICE:  relation "idx_students_gpa" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:152: NOTICE:  relation "idx_students_year" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:169: NOTICE:  relation "professors" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:171: NOTICE:  relation "idx_professors_user" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:172: NOTICE:  relation "idx_professors_department" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:186: NOTICE:  relation "advisors" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:188: NOTICE:  relation "idx_advisors_user" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:201: NOTICE:  relation "teaching_assistants" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:203: NOTICE:  relation "idx_ta_user" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:204: NOTICE:  relation "idx_ta_professor" already exists, skipping
+CREATE INDEX
+DO
+DO
+psql:database/001_schema.sql:238: NOTICE:  relation "courses" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:240: NOTICE:  relation "idx_courses_professor" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:241: NOTICE:  relation "idx_courses_semester" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:242: NOTICE:  relation "idx_courses_department" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:261: NOTICE:  relation "enrollments" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:263: NOTICE:  relation "idx_enrollments_student" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:264: NOTICE:  relation "idx_enrollments_course" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:265: NOTICE:  relation "idx_enrollments_status" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:282: NOTICE:  relation "attendances" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:284: NOTICE:  relation "idx_attendance_student_date" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:285: NOTICE:  relation "idx_attendance_course" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:286: NOTICE:  relation "idx_attendance_date" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:303: NOTICE:  relation "activity_logs" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:305: NOTICE:  relation "idx_activity_logs_student" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:306: NOTICE:  relation "idx_activity_logs_timestamp" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:307: NOTICE:  relation "idx_activity_logs_action" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:332: NOTICE:  relation "risk_assessments" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:334: NOTICE:  relation "idx_risk_assessments_student" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:335: NOTICE:  relation "idx_risk_assessments_level" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:336: NOTICE:  relation "idx_risk_assessments_date" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:355: NOTICE:  relation "intervention_plans" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:357: NOTICE:  relation "idx_interventions_student" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:358: NOTICE:  relation "idx_interventions_advisor" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:359: NOTICE:  relation "idx_interventions_status" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:375: NOTICE:  relation "intervention_actions" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:377: NOTICE:  relation "idx_ia_plan" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:395: NOTICE:  relation "notifications" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:397: NOTICE:  relation "idx_notifications_user" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:398: NOTICE:  relation "idx_notifications_unread" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:399: NOTICE:  relation "idx_notifications_created" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:423: NOTICE:  relation "quizzes" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:425: NOTICE:  relation "idx_quizzes_course" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:426: NOTICE:  relation "idx_quizzes_status" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:427: NOTICE:  relation "idx_quizzes_creator" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:445: NOTICE:  relation "questions" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:447: NOTICE:  relation "idx_questions_quiz" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:470: NOTICE:  relation "quiz_submissions" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:472: NOTICE:  relation "idx_quiz_submissions_quiz" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:473: NOTICE:  relation "idx_quiz_submissions_student" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:492: NOTICE:  relation "grade_records" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:494: NOTICE:  relation "idx_grades_student" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:495: NOTICE:  relation "idx_grades_course" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:514: NOTICE:  relation "audit_logs" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:516: NOTICE:  relation "idx_audit_logs_user" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:517: NOTICE:  relation "idx_audit_logs_timestamp" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:518: NOTICE:  relation "idx_audit_logs_entity" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:533: NOTICE:  relation "course_sections" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:535: NOTICE:  relation "idx_sections_course" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:536: NOTICE:  relation "idx_sections_ta" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:554: NOTICE:  relation "announcements" already exists, skipping
+CREATE TABLE
+psql:database/001_schema.sql:556: NOTICE:  relation "idx_announcements_course" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:557: NOTICE:  relation "idx_announcements_global" already exists, skipping
+CREATE INDEX
+psql:database/001_schema.sql:558: NOTICE:  relation "idx_announcements_created" already exists, skipping
+CREATE INDEX
+CREATE FUNCTION
+DO
+CREATE FUNCTION
+DROP TRIGGER
+CREATE TRIGGER
+CREATE FUNCTION
+DO

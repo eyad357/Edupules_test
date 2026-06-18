@@ -179,7 +179,8 @@ class Professor(Base):
 
     user     = relationship("User",           back_populates="professor")
     courses  = relationship("Course",         back_populates="professor")
-    offerings = relationship("CourseOffering", back_populates="professor")
+    offerings = relationship("CourseOffering",back_populates="professor"
+)
 
 
 # ═════════════════════════════════════════════════════════════════════════════
