@@ -1,9 +1,8 @@
 // src/pages/AuthPage.tsx
-// FIX: Updated demo credentials to match the required passwords per role:
-//   administrator → 1 | professor → 11 | ta → 111 | student → 1111
-// FIX: handleLogin redirect now uses the role returned by the server (from
-//      the AuthContext user object) instead of the local role selector state,
-//      so the redirect is always correct regardless of what the user typed.
+// v1.1 — handleLogin now uses the AuthUser returned directly from login()
+//         instead of reading user from React context (which is stale during
+//         the same render cycle). This fixes the page-refresh / redirect loop
+//         that caused a 401 on every sign-in attempt.
 
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -14,7 +13,6 @@ import { Loader2, GraduationCap, Moon, Sun, Info, AlertCircle } from 'lucide-rea
 type Role = 'admin' | 'professor' | 'student' | 'ta';
 
 // Demo accounts seeded in database/004_demo_users.sql
-// Each role has a distinct simple password as required.
 const CREDENTIALS = [
   { role: 'admin'     as Role, email: 'admin@eduguard.edu',         label: 'Administrator',      password: '1'    },
   { role: 'professor' as Role, email: 'j.anderson@eduguard.edu',    label: 'Professor',          password: '11'   },
@@ -30,9 +28,9 @@ const ROLE_PATHS: Record<Role, string> = {
 };
 
 export function AuthPage() {
-  const navigate       = useNavigate();
-  const { login, isLoading, loginError, user } = useAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const navigate                       = useNavigate();
+  const { login, isLoading, loginError } = useAuth();
+  const { isDark, toggleTheme }        = useTheme();
 
   const [email,    setEmail]    = useState('admin@eduguard.edu');
   const [password, setPassword] = useState('1');
@@ -50,11 +48,11 @@ export function AuthPage() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = await login(email, password, role);
-    if (success) {
-      // FIX: use the role from the context user (server-confirmed) for redirect
-      // Fall back to the local selector if user isn't set yet (shouldn't happen)
-      const confirmedRole = (user?.role ?? role) as Role;
+    // login() returns the AuthUser object directly — we don't read from React
+    // context here because that state update hasn't re-rendered yet.
+    const loggedInUser = await login(email, password, role);
+    if (loggedInUser) {
+      const confirmedRole = (loggedInUser.role ?? role) as Role;
       navigate(ROLE_PATHS[confirmedRole] ?? '/admin');
     }
   };

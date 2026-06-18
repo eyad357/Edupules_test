@@ -1,13 +1,9 @@
 /**
  * AuthContext — Real JWT authentication via FastAPI
  *
- * FIXES applied in this version:
- * 1. login() now reads the role from the server response (res.data.user.role)
- *    and returns it to the caller via the returned user object, so AuthPage
- *    can redirect to the correct dashboard using the server-confirmed role.
- * 2. isInitializing guard prevents redirect race condition on page reload.
- * 3. loginError exposed in context for AuthPage.
- * 4. refreshUser() calls AuthAPI.me() which now hits FastAPI /auth/me.
+ * v1.1 — login() now returns AuthUser | null instead of boolean,
+ *         so AuthPage can navigate to the correct route using the
+ *         server-confirmed role without relying on stale React state.
  */
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { AuthAPI } from '../lib/api';
@@ -34,8 +30,8 @@ export interface AuthUser {
 interface AuthContextType {
   user: AuthUser | null;
   token: string | null;
-  /** Attempts login. Returns true on success, false on failure. */
-  login: (email: string, password: string, role?: string) => Promise<boolean>;
+  /** Attempts login. Returns the AuthUser on success, null on failure. */
+  login: (email: string, password: string, role?: string) => Promise<AuthUser | null>;
   logout: (redirectFn?: () => void) => void;
   refreshUser: () => Promise<void>;
   isLoading: boolean;
@@ -103,13 +99,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [logout]);
 
   // ── login ─────────────────────────────────────────────────
-  // `role` is accepted as a third argument (AuthPage passes it) but the
-  // actual role comes from the server response — we don't send it to the API.
+  // Returns the AuthUser object on success so the caller can navigate
+  // using the server-confirmed role immediately, without waiting for
+  // React to re-render the context state.
   const login = useCallback(async (
     email: string,
     password: string,
-    _role?: string,       // accepted, unused — role is determined by the server
-  ): Promise<boolean> => {
+    _role?: string,       // accepted for API compatibility, role comes from server
+  ): Promise<AuthUser | null> => {
     setLoading(true);
     setLoginError(null);
     try {
@@ -117,7 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!res.success || !res.data) {
         setLoginError(res.message ?? 'Login failed. Please check your credentials.');
-        return false;
+        return null;
       }
 
       const { token: newToken, user: userData } = res.data;
@@ -127,11 +124,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setToken(newToken);
       setUser(userData);
 
-      return true;
+      return userData;        // ← caller gets the user immediately
     } catch (err: any) {
       const msg = err.message ?? 'Login failed. Please try again.';
       setLoginError(msg);
-      return false;
+      return null;
     } finally {
       setLoading(false);
     }
