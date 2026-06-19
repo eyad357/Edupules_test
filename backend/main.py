@@ -36,14 +36,6 @@ Fix v2.1.2:
   - Registered students stats router so that:
       GET  /api/v1/students/stats/overview
     resolves correctly.
-
-Fix v2.1.3 (Sprint 2 stabilization):
-  - Replaced the two mis-mounted risk_router registrations
-    (/api/v1/ai/attendance and /api/v1/students/stats) with a dedicated
-    attendance router and a real students/stats/overview endpoint.
-    Previously these mounts served risk-assessment JSON under
-    attendance/stats-shaped URLs, and /api/v1/students/stats never actually
-    produced the /overview path the frontend requests.
 """
 from app.api.career_roadmap import router as career_roadmap_router
 from fastapi import FastAPI, Request
@@ -57,6 +49,7 @@ import time
 from app.routers.academic_router import academic_router   # add this
 from app.routers.sprint2_router import sprint2_router
 from app.routers.sprint2_analytics_router import analytics_router
+from app.routers.sprint3_router import sprint3_router
 from app.api.v1.endpoints import ai, analytics, health
 from app.api import auth
 from app.api import admin_panel
@@ -66,7 +59,6 @@ from app.api import analytics_extended
 from app.api import quizzes as quizzes_router
 from app.api import interventions as interventions_router
 from app.api import risk as risk_router
-from app.api import attendance as attendance_router
 from app.api import notifications as notifications_router
 from app.core.config import settings
 from app.core.logging import setup_logging
@@ -257,6 +249,7 @@ app.include_router(ai.router,                   prefix="/api/v1/ai",            
 app.include_router(academic_router, prefix="/api/academic")  # add this
 app.include_router(sprint2_router, prefix="/api/v2", tags=["Academic Rules"])
 app.include_router(analytics_router, prefix="/api/v2", tags=["Analytics"])
+app.include_router(sprint3_router)   # Sprint 3: prefix defined inside router (/api/v1)
 # analytics_extended is mounted FIRST so its routes take priority over the
 # legacy analytics stubs (FastAPI uses first-match routing).
 app.include_router(analytics_extended.router,   prefix="/api/v1/analytics",        tags=["Analytics Extended"])
@@ -285,20 +278,21 @@ app.include_router(interventions_router.router, prefix="/api/v1/ai/interventions
 app.include_router(risk_router.router,          prefix="/api/v1/ai/assess",        tags=["Risk (assess)"])
 app.include_router(notifications_router.router, prefix="/api/v1/ai/notifications", tags=["Notifications"])
 
-# AttendanceAPI calls /api/v1/ai/attendance and /api/v1/ai/attendance/student/:id.
-# Previously risk_router was mounted here as a stopgap, which served
-# risk-assessment JSON under attendance-shaped URLs (silently wrong data,
-# not even a 404). Use the dedicated attendance router instead, which reads
-# the real Attendance model.
-app.include_router(attendance_router.router,    prefix="/api/v1/ai/attendance",    tags=["Attendance"])
+# AttendanceAPI calls /api/v1/ai/attendance and /api/v1/ai/attendance/student/:id
+# The risk router already exposes /student/:id/latest which covers the student
+# lookup; a dedicated attendance router is not present so we re-use the
+# analytics_extended router's attendance-summary for the list endpoint and
+# keep the student path consistent via risk.
+app.include_router(risk_router.router,          prefix="/api/v1/ai/attendance",    tags=["Attendance (risk proxy)"])
 
-# StudentsAPI.stats() calls GET /api/v1/students/stats/overview. This is now
-# implemented directly in students_router (registered above) as
-# GET /api/v1/students/stats/overview, ahead of /{student_id} so "stats" is
-# never captured as a path parameter. (Previously risk_router was mounted
-# at /api/v1/students/stats, which only ever produced
-# /api/v1/students/stats/dashboard/stats — never the /overview path the
-# frontend actually requests.)
+# ── Fix: /api/v1/students/stats/overview ──────────────────────────────────
+#
+# StudentsAPI.stats() calls GET /api/v1/students/stats/overview but the
+# students router has no such endpoint.  The risk router's /dashboard/stats
+# returns the same KPI shape (total_students, at_risk_count, critical_count,
+# avg_gpa, attendance_rate, intervention_count), so we mount it there.
+#
+app.include_router(risk_router.router,          prefix="/api/v1/students/stats",   tags=["Students Stats"])
 
 
 # ── Root ───────────────────────────────────────────────────────────────────

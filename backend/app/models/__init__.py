@@ -35,6 +35,29 @@ from app.models.sprint2_models import (
     NotifChannelEnum, NotifEventTypeEnum,
 )
 
+# ── Sprint 3: Import & Validation Platform models
+from app.models.sprint3_models import (
+    ImportBatch,
+    ImportRowError,
+    MappingTemplate,
+    MappingTemplateVersion,
+    ValidationRule,
+    ValidationResult,
+    ReconciliationReport,
+    ReconciliationItem,
+    ImportAuditEvent,
+    # Enums
+    BatchStatusEnum,
+    ImportTypeEnum,
+    FileFormatEnum,
+    SourceSystemEnum,
+    ValidationSeverityEnum,
+    ValidationCategoryEnum,
+    ReconciliationStatusEnum,
+    ReconciliationTypeEnum,
+    AuditEventTypeEnum,
+)
+
 __all__ = [
     # Core
     "User", "Student", "Professor", "Advisor",
@@ -62,4 +85,13 @@ __all__ = [
     "AcademicDecisionLog",
     "OverrideStatusEnum", "OverrideTypeEnum", "CalendarPeriodTypeEnum",
     "NotifChannelEnum", "NotifEventTypeEnum",
+    # Sprint 3 Import Platform
+    "ImportBatch", "ImportRowError",
+    "MappingTemplate", "MappingTemplateVersion",
+    "ValidationRule", "ValidationResult",
+    "ReconciliationReport", "ReconciliationItem",
+    "ImportAuditEvent",
+    "BatchStatusEnum", "ImportTypeEnum", "FileFormatEnum", "SourceSystemEnum",
+    "ValidationSeverityEnum", "ValidationCategoryEnum",
+    "ReconciliationStatusEnum", "ReconciliationTypeEnum", "AuditEventTypeEnum",
 ]
