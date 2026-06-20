@@ -50,6 +50,10 @@ from app.routers.academic_router import academic_router   # add this
 from app.routers.sprint2_router import sprint2_router
 from app.routers.sprint2_analytics_router import analytics_router
 from app.routers.sprint3_router import sprint3_router
+from app.routers.sprint4_router     import sprint4_router
+from app.routers.enterprise_router  import enterprise_router
+from app.routers.sprint4_ext_router import sprint4_ext_router
+from app.services.sprint4_services import RulesConfigService
 from app.api.v1.endpoints import ai, analytics, health
 from app.api import auth
 from app.api import admin_panel
@@ -75,6 +79,16 @@ async def lifespan(app: FastAPI):
     logger.info("🚀 EduGuard AI Service starting up…")
     Base.metadata.create_all(bind=engine)
     logger.info("✅ Database tables verified")
+
+    # Sprint 4: seed default academic rules if not already present
+    from app.db.database import SessionLocal
+    try:
+        with SessionLocal() as db:
+            RulesConfigService.seed_defaults(db)
+            logger.info("✅ Sprint 4 academic rules verified")
+    except Exception as e:
+        logger.warning(f"⚠️  Sprint 4 rules seed skipped: {e}")
+
     yield
     logger.info("🛑 EduGuard AI Service shutting down…")
 
@@ -250,6 +264,9 @@ app.include_router(academic_router, prefix="/api/academic")  # add this
 app.include_router(sprint2_router, prefix="/api/v2", tags=["Academic Rules"])
 app.include_router(analytics_router, prefix="/api/v2", tags=["Analytics"])
 app.include_router(sprint3_router)   # Sprint 3: prefix defined inside router (/api/v1)
+app.include_router(sprint4_router,     prefix="/api/v1/academic", tags=["Academic Intelligence"])  # Sprint 4
+app.include_router(sprint4_ext_router, prefix="/api/v1/academic", tags=["Academic Intelligence Extended"])  # Sprint 4 Extended
+app.include_router(enterprise_router, prefix="/api/v1/enterprise", tags=["Enterprise Academic Platform"])  # Enterprise
 # analytics_extended is mounted FIRST so its routes take priority over the
 # legacy analytics stubs (FastAPI uses first-match routing).
 app.include_router(analytics_extended.router,   prefix="/api/v1/analytics",        tags=["Analytics Extended"])
