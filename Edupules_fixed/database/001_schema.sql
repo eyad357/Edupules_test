@@ -135,14 +135,6 @@ CREATE TABLE IF NOT EXISTS students (
     major               VARCHAR(100),
     year                SMALLINT        CHECK (year BETWEEN 1 AND 6),
     gpa                 NUMERIC(3,2)    DEFAULT 0.00 CHECK (gpa BETWEEN 0.00 AND 4.00),
-    -- NOTE: `gpa` is the CURRENT source of truth read by all live API/analytics
-    -- code (auth.py, analytics.py, analytics_extended.py, students.py, risk.py).
-    -- It is auto-maintained by the trg_update_gpa trigger (simple average of
-    -- enrollments.grade, scaled to 0-4). The `cgpa` column added later in
-    -- 005_academic_foundation.sql is reserved for the formal term-by-term
-    -- GPA/CGPA engine (quality points, grade_scale, student_term_gpa) and is
-    -- NOT YET wired into any endpoint in this codebase. Do not assume `cgpa`
-    -- reflects a student's real standing until that engine is connected here.
     enrollment_date     DATE            DEFAULT CURRENT_DATE,
     phone               VARCHAR(30),
     address             TEXT,
@@ -248,7 +240,6 @@ CREATE TABLE IF NOT EXISTS courses (
 CREATE INDEX IF NOT EXISTS idx_courses_professor  ON courses(professor_id);
 CREATE INDEX IF NOT EXISTS idx_courses_semester   ON courses(semester, year);
 CREATE INDEX IF NOT EXISTS idx_courses_department ON courses(department_id);
-CREATE INDEX IF NOT EXISTS idx_courses_active      ON courses(is_active) WHERE is_active = TRUE;
 
 
 -- ============================================================
@@ -302,13 +293,11 @@ CREATE INDEX IF NOT EXISTS idx_attendance_date         ON attendances(date);
 -- ============================================================
 CREATE TABLE IF NOT EXISTS activity_logs (
     id                  SERIAL          PRIMARY KEY,
-    student_id          INTEGER         NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
+    student_id          INTEGER         REFERENCES students(id) ON DELETE SET NULL,
     action              VARCHAR(100)    NOT NULL,
     duration_minutes    INTEGER         DEFAULT 0,
     resource_type       VARCHAR(50),
-    resource_id         BIGINT,  -- Polymorphic reference (no FK by design): the
-                                  -- table it points to depends on resource_type
-                                  -- (e.g. 'quiz' -> quizzes.id, 'course' -> courses.id).
+    resource_id         BIGINT,
     metadata_json       JSONB,
     timestamp           TIMESTAMPTZ     DEFAULT NOW()
 );
@@ -417,8 +406,8 @@ CREATE TABLE IF NOT EXISTS quizzes (
     id                  SERIAL          PRIMARY KEY,
     title               VARCHAR(255)    NOT NULL,
     description         TEXT,
-    course_id           INTEGER         NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-    created_by          INTEGER         NOT NULL REFERENCES users(id)   ON DELETE RESTRICT,
+    course_id           INTEGER         NOT NULL REFERENCES courses(id) ON DELETE RESTRICT,
+    created_by          INTEGER         REFERENCES users(id)   ON DELETE SET NULL,
     duration_minutes    INTEGER         NOT NULL DEFAULT 60,
     attempts_limit      SMALLINT        NOT NULL DEFAULT 1,
     start_time          TIMESTAMPTZ,
@@ -464,7 +453,7 @@ CREATE INDEX IF NOT EXISTS idx_questions_quiz ON questions(quiz_id);
 -- ============================================================
 CREATE TABLE IF NOT EXISTS quiz_submissions (
     id                  SERIAL          PRIMARY KEY,
-    quiz_id             INTEGER         NOT NULL REFERENCES quizzes(id)  ON DELETE CASCADE,
+    quiz_id             INTEGER         NOT NULL REFERENCES quizzes(id)  ON DELETE RESTRICT,
     student_id          INTEGER         NOT NULL REFERENCES students(id) ON DELETE RESTRICT,
     answers_json        JSONB           DEFAULT '{}',
     score               NUMERIC(5,2),
@@ -516,12 +505,7 @@ CREATE TABLE IF NOT EXISTS audit_logs (
     user_id         INTEGER         REFERENCES users(id) ON DELETE SET NULL,
     action          VARCHAR(100)    NOT NULL,
     entity_type     VARCHAR(50),
-    entity_id       BIGINT,  -- Polymorphic reference (no FK by design): populated
-                              -- dynamically by the generic audit trigger using
-                              -- TG_TABLE_NAME/OLD.id/NEW.id from any audited table.
-                              -- BIGINT (not INTEGER) because audited tables include
-                              -- BIGSERIAL primary keys (e.g. grade_records.id,
-                              -- departments.id).
+    entity_id       INTEGER,
     old_value       JSONB,
     new_value       JSONB,
     ip_address      INET,
@@ -559,9 +543,9 @@ CREATE TABLE IF NOT EXISTS announcements (
     id              BIGSERIAL       PRIMARY KEY,
     title           VARCHAR(255)    NOT NULL,
     content         TEXT            NOT NULL,
-    author_id       INTEGER         NOT NULL REFERENCES users(id)       ON DELETE RESTRICT,
-    course_id       INTEGER         REFERENCES courses(id)              ON DELETE CASCADE,
-    department_id   BIGINT          REFERENCES departments(id)          ON DELETE CASCADE,
+    author_id       INTEGER         REFERENCES users(id)       ON DELETE SET NULL,
+    course_id       INTEGER         REFERENCES courses(id)              ON DELETE SET NULL,
+    department_id   BIGINT          REFERENCES departments(id)          ON DELETE SET NULL,
     is_global       BOOLEAN         DEFAULT FALSE,
     published_at    TIMESTAMPTZ,
     expires_at      TIMESTAMPTZ,
@@ -651,9 +635,7 @@ $$ LANGUAGE plpgsql;
 DO $$ DECLARE t TEXT; BEGIN
     FOREACH t IN ARRAY ARRAY[
         'users', 'students', 'enrollments', 'risk_assessments',
-        'intervention_plans', 'courses',
-        'grade_records', 'quiz_submissions', 'attendances',
-        'quizzes', 'professors', 'advisors'
+        'intervention_plans', 'courses'
     ] LOOP
         EXECUTE format('
             DROP TRIGGER IF EXISTS trg_audit ON %I;
@@ -667,4 +649,26 @@ END $$;
 -- ============================================================
 -- END OF FILE
 -- Next: run 002_seed.sql
+-- ============================================================
+
+
+-- ============================================================
+-- SOFT DELETE SUPPORT
+-- Adds deleted_at to entities whose deletion must be prevented
+-- but whose records should be logically removable from UI.
+-- Physical rows are preserved; API filters WHERE deleted_at IS NULL.
+-- ============================================================
+
+ALTER TABLE students    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE professors  ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE courses     ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+ALTER TABLE advisors    ADD COLUMN IF NOT EXISTS deleted_at TIMESTAMPTZ DEFAULT NULL;
+
+CREATE INDEX IF NOT EXISTS idx_students_deleted_at   ON students(deleted_at)   WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_professors_deleted_at ON professors(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_courses_deleted_at    ON courses(deleted_at)    WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_advisors_deleted_at   ON advisors(deleted_at)   WHERE deleted_at IS NULL;
+
+-- ============================================================
+-- END OF FILE (revised: referential integrity hardened)
 -- ============================================================

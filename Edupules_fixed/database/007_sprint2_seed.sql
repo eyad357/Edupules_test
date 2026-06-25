@@ -321,7 +321,7 @@ ON CONFLICT (code) DO UPDATE SET
 INSERT INTO courses (code, name, credits, category, curriculum_level, plan_semester,
     lct_hours, lab_hours, tut_hours, contact_hours, swl_hours, ects_credits,
     is_active, counts_in_cgpa, program_id, track_id)
-SELECT c.code,c.name,3,'elective'::course_category,c.lvl,c.psem,2,3,0,5,150,6,TRUE,TRUE,ap.id,at2.id
+SELECT c.code,c.name,3,'elective',c.lvl,c.psem,2,3,0,5,150,6,TRUE,TRUE,ap.id,at2.id
 FROM academic_programs ap JOIN academic_tracks at2 ON at2.code='CS-SE',
 (VALUES
     ('ELE432','Digital Signal Processing',                 4,7),
@@ -355,7 +355,7 @@ ON CONFLICT (code) DO UPDATE SET
 -- Non-credit language course (P-grade, 0 CH — from CGPA_Calculator.xlsx)
 INSERT INTO courses (code, name, credits, category, is_pass_fail, counts_in_cgpa,
     is_active, program_id)
-SELECT 'LAN021','Language Course (Non-Credit)',0,'university_req'::course_category,TRUE,FALSE,TRUE,ap.id
+SELECT 'LAN021','Language Course (Non-Credit)',0,'university_req',TRUE,FALSE,TRUE,ap.id
 FROM academic_programs ap WHERE ap.code='CS'
 ON CONFLICT (code) DO NOTHING;
 
