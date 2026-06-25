@@ -39,6 +39,7 @@ from typing import Any, Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel
 from sqlalchemy import func, or_, cast, String, text
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.api.auth import get_current_user
@@ -47,7 +48,7 @@ from app.models.models import (
     User, Student, Professor, Advisor, Course,
     Enrollment, Attendance, ActivityLog, RiskAssessment,
     InterventionPlan, InterventionAction, Notification,
-    Quiz, Question, QuizSubmission, AuditLog,
+    Quiz, Question, QuizSubmission, AuditLog, GradeRecord,
 )
 
 router = APIRouter()
@@ -68,16 +69,28 @@ TABLE_REGISTRY: Dict[str, Any] = {
     "quizzes":              Quiz,
     "questions":            Question,
     "quiz_submissions":     QuizSubmission,
+    "grade_records":        GradeRecord,
     "audit_logs":           AuditLog,
 }
 
 HIDDEN_COLUMNS = {"hashed_password"}
 
-# Tables where deleting via ORM causes SET NULL on NOT-NULL FK children.
-# For these we let PostgreSQL's ON DELETE CASCADE handle child rows.
+# Tables where deleting via ORM causes SET NULL on NOT-NULL FK children, OR
+# where the table is the parent of an ON DELETE CASCADE child. For these we
+# let PostgreSQL's native ON DELETE CASCADE handle child rows via raw SQL.
+#
+# professors/advisors were REMOVED from this set: after the academic-record
+# protection migration (012_fix_academic_record_protection.sql), neither
+# table has any ON DELETE CASCADE child left — their only children
+# (teaching_assistants.professor_id, students.advisor_id,
+# intervention_plans.advisor_id) are all ON DELETE SET NULL, which
+# SQLAlchemy's ORM delete() handles natively without error. Keeping them
+# in this set would have had no incorrect effect, but removing them lets
+# delete_record's audit trail (db.delete(row) participates in SQLAlchemy's
+# session identity map) behave consistently with every other safely-ORM-
+# deletable table.
 CASCADE_DELETE_TABLES = {
-    "users", "students", "professors", "advisors",
-    "courses", "intervention_plans", "quizzes",
+    "users", "students", "courses", "intervention_plans", "quizzes",
 }
 
 
@@ -93,6 +106,15 @@ def _serialize(obj: Any) -> Any:
         return None
     if isinstance(obj, (int, float, bool, str)):
         return obj
+    if isinstance(obj, (dict, list)):
+        # JSONB columns (recommendations, features_snapshot, answers_json,
+        # options_json, old_value, new_value, metadata_json, ...) come back
+        # from psycopg2 as native dict/list already. Returning them as-is
+        # keeps them as real JSON in the API response instead of falling
+        # through to str(obj) below, which would have produced a Python
+        # repr string like "{'a': 1}" — invalid JSON the frontend cannot
+        # reliably parse.
+        return obj
     if isinstance(obj, (datetime, date)):
         return obj.isoformat()
     if hasattr(obj, "__table__"):
@@ -100,7 +122,16 @@ def _serialize(obj: Any) -> Any:
         for col in obj.__table__.columns:
             if col.name in HIDDEN_COLUMNS:
                 continue
-            val = getattr(obj, col.name, None)
+            # IMPORTANT: read via col.key (the actual Python/ORM attribute
+            # name), not col.name (the raw DB column name). They differ for
+            # columns declared with an explicit key= (e.g. notifications'
+            # "metadata" DB column maps to the metadata_json attribute,
+            # since "metadata" is reserved by Base.metadata on every
+            # declarative instance). Using col.name here would silently
+            # return the SQLAlchemy MetaData object instead of the value.
+            val = getattr(obj, col.key, None)
+            # The JSON key sent to the frontend stays col.name, so the
+            # response shape is unchanged from the frontend's perspective.
             result[col.name] = _serialize(val)
         return result
     if hasattr(obj, "value"):
@@ -239,6 +270,35 @@ def _get_model(table_name: str) -> Any:
     return model
 
 
+def _name_to_key_map(model: Any) -> Dict[str, str]:
+    """Map DB column name -> actual ORM attribute key for this model.
+
+    These differ only for columns declared with an explicit key= (currently
+    notifications.metadata -> metadata_json, since "metadata" collides with
+    Base.metadata on every declarative instance). For every other column
+    name == key. The frontend continues to send/receive the DB column name
+    (col.name); this mapping is purely an internal translation step so the
+    write actually lands on the correct attribute instead of being silently
+    swallowed by Base.metadata.
+    """
+    return {col.name: col.key for col in model.__table__.columns}
+
+
+# Fields that must NEVER be settable through the generic admin create/update
+# endpoints, even though they are real, non-primary-key columns on their
+# tables:
+#   - created_at: an immutable record of when the row was first written.
+#     Allowing arbitrary edits would let an admin rewrite audit/forensic
+#     history (e.g. backdating when a grade or risk assessment was created).
+#   - role: changing a user's role is a privilege-escalation-sensitive
+#     operation. It is still possible for an admin to do this — that is a
+#     legitimate admin capability — but it must go through a path that is
+#     unambiguous and logged, not a silent field inside a generic "update
+#     any column" payload where a typo or copy-paste mistake on an unrelated
+#     edit could change someone's role without anyone noticing.
+IMMUTABLE_FIELDS = {"created_at"}
+
+
 def _column_meta(model: Any) -> List[Dict]:
     cols = []
     for col in model.__table__.columns:
@@ -258,6 +318,7 @@ def _column_meta(model: Any) -> List[Dict]:
             "foreign_keys": [str(fk.target_fullname) for fk in col.foreign_keys],
             "default":      str(col.default.arg) if col.default and hasattr(col.default, "arg") else None,
             "enum_values":  enum_values,
+            "editable":     not col.primary_key and col.name not in IMMUTABLE_FIELDS,
         })
     if model.__tablename__ == "users":
         cols.append({
@@ -442,8 +503,12 @@ def create_record(
     db: Session = Depends(get_db),
 ):
     model = _get_model(table_name)
-    # Allowed columns: real DB columns minus hidden, plus primary key excluded
-    allowed = {c.name for c in model.__table__.columns if not c.primary_key}
+    name_to_key = _name_to_key_map(model)
+    # Allowed columns: real DB columns minus hidden/immutable, primary key excluded
+    allowed = {
+        c.name for c in model.__table__.columns
+        if not c.primary_key and c.name not in IMMUTABLE_FIELDS
+    }
     # Strip virtual/empty fields, keep password field for users
     raw = {k: v for k, v in payload.data.items() if k in allowed or k == "password"}
     # Remove empty strings but keep False and 0
@@ -459,8 +524,16 @@ def create_record(
 
     if not data:
         raise HTTPException(status_code=422, detail="No valid fields provided.")
+
+    # Translate DB column names -> actual ORM attribute keys (these differ
+    # only for columns declared with key=, e.g. notifications.metadata ->
+    # metadata_json). Without this, model(**data) with the raw DB column
+    # name "metadata" is silently accepted by Python but never reaches the
+    # column — see _name_to_key_map for why.
+    orm_data = {name_to_key.get(k, k): v for k, v in data.items()}
+
     try:
-        obj = model(**data)
+        obj = model(**orm_data)
         db.add(obj)
         db.commit()
         db.refresh(obj)
@@ -479,10 +552,14 @@ def update_record(
     db: Session = Depends(get_db),
 ):
     model = _get_model(table_name)
+    name_to_key = _name_to_key_map(model)
     row = db.query(model).filter(model.id == record_id).first()
     if not row:
         raise HTTPException(status_code=404, detail="Record not found")
-    allowed = {c.name for c in model.__table__.columns if not c.primary_key}
+    allowed = {
+        c.name for c in model.__table__.columns
+        if not c.primary_key and c.name not in IMMUTABLE_FIELDS
+    }
 
     data = dict(payload.data)
 
@@ -493,7 +570,15 @@ def update_record(
     try:
         for key, val in data.items():
             if key in allowed:
-                setattr(row, key, val if val != "" else None)
+                # Translate DB column name -> actual ORM attribute key.
+                # setattr(row, "metadata", val) would silently set a plain
+                # Python attribute named "metadata" on the instance (Python
+                # permits arbitrary attribute assignment) without ever
+                # touching the real metadata_json column or raising any
+                # error — db.commit() would then persist nothing for that
+                # field. Using col.key fixes this for every such column.
+                attr = name_to_key.get(key, key)
+                setattr(row, attr, val if val != "" else None)
         db.commit()
         db.refresh(row)
         return {"record": _enrich(table_name, row), "message": "Record updated successfully"}
@@ -524,6 +609,16 @@ def delete_record(
             db.delete(row)
         db.commit()
         return {"message": f"Record {record_id} deleted from {table_name}"}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "This record cannot be deleted because academic records are "
+                "linked to it. Archive/deactivate the entity instead of "
+                "deleting it."
+            ),
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=422, detail=str(e))
@@ -549,6 +644,16 @@ def bulk_delete(
             deleted = db.query(model).filter(model.id.in_(payload.ids)).delete(synchronize_session=False)
         db.commit()
         return {"message": f"Deleted {deleted} records from {table_name}", "deleted_count": deleted}
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=(
+                "One or more of these records cannot be deleted because "
+                "academic records are linked to them. Archive/deactivate "
+                "the entities instead of deleting them."
+            ),
+        )
     except Exception as e:
         db.rollback()
         raise HTTPException(status_code=422, detail=str(e))
