@@ -1,13 +1,16 @@
-import { useState } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Eye, Edit, ClipboardList } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Clock, Users, CheckCircle, XCircle, Eye, ClipboardList } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
-import { mockQuizzes, mockQuizSubmissions, mockCourses, mockStudents } from '../../lib/mockData';
 import { cn } from '../../lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { formatDateTime } from '../../lib/utils';
+
+const BASE = (import.meta as any).env?.VITE_FASTAPI_URL ?? 'http://localhost:8000/api/v1';
+const TOKEN_KEY = 'eduguard_token';
+const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` });
 
 const statusVariant = (status: string) => {
   if (status === 'published') return 'info';
@@ -15,19 +18,51 @@ const statusVariant = (status: string) => {
   return 'warning';
 };
 
+interface LiveQuiz {
+  id: number; title: string; description: string; status: string;
+  course_code: string; course_name: string; duration_minutes: number;
+  total_points: number; start_time: string | null; end_time: string | null;
+  submission_count: number; avg_score: number | null;
+}
+
+interface LiveSubmission {
+  id: number; quiz_id: number; quiz_title: string;
+  student_name: string; score: number; max_score: number;
+  percentage: number; passed: boolean; attempt_number: number;
+  submitted_at: string | null; time_taken_minutes: number;
+}
+
 export function ProfessorQuizzes() {
   const [activeTab, setActiveTab] = useState<'overview' | 'results'>('overview');
+  const [mockQuizzes, setMockQuizzes] = useState<LiveQuiz[]>([]);
+  const [mockQuizSubmissions, setMockQuizSubmissions] = useState<LiveSubmission[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [qRes, sRes] = await Promise.all([
+        fetch(`${BASE}/analytics/quizzes?limit=50`, { headers: authHeader() }),
+        fetch(`${BASE}/analytics/quiz-submissions?limit=100`, { headers: authHeader() }),
+      ]);
+      if (qRes.ok) { const d = await qRes.json(); setMockQuizzes(d.quizzes ?? d ?? []); }
+      if (sRes.ok) { const d = await sRes.json(); setMockQuizSubmissions(d.submissions ?? d ?? []); }
+    } catch { /* fallback */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchData(); }, [fetchData]);
 
   const quizzesWithCourse = mockQuizzes.map(q => ({
     ...q,
-    course: mockCourses.find(c => c.id === q.course_id),
+    course: { code: q.course_code, name: q.course_name },
     submissions: mockQuizSubmissions.filter(s => s.quiz_id === q.id),
   }));
 
   const scoreData = quizzesWithCourse.map(q => ({
     name: q.title.length > 18 ? q.title.slice(0, 18) + '…' : q.title,
     avgScore: q.submissions.length
-      ? Math.round(q.submissions.reduce((acc, s) => acc + s.score, 0) / q.submissions.length)
+      ? Math.round(q.submissions.reduce((acc, s) => acc + (s.score ?? 0), 0) / q.submissions.length)
       : 0,
     submissions: q.submissions.length,
   }));
@@ -157,20 +192,18 @@ export function ProfessorQuizzes() {
               </thead>
               <tbody className="divide-y divide-neutral-50 dark:divide-neutral-800">
                 {mockQuizSubmissions.map(sub => {
-                  const student = mockStudents.find(s => s.id === sub.student_id);
-                  const quiz = mockQuizzes.find(q => q.id === sub.quiz_id);
-                  const pct = Math.round((sub.score / sub.max_score) * 100);
+                  const pct = Math.round(sub.percentage ?? ((sub.score / sub.max_score) * 100));
                   return (
                     <tr key={sub.id} className="hover:bg-neutral-50 dark:hover:bg-neutral-800/50 transition-colors">
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <div className="w-7 h-7 rounded-full bg-red-100 dark:bg-red-900/20 flex items-center justify-center shrink-0">
-                            <span className="text-xs font-semibold text-red-700 dark:text-red-400">{student?.name.charAt(0)}</span>
+                            <span className="text-xs font-semibold text-red-700 dark:text-red-400">{(sub.student_name ?? 'S').charAt(0)}</span>
                           </div>
-                          <span className="text-sm text-neutral-900 dark:text-white">{student?.name}</span>
+                          <span className="text-sm text-neutral-900 dark:text-white">{sub.student_name ?? `Student ${sub.id}`}</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 max-w-[160px] truncate">{quiz?.title}</td>
+                      <td className="px-4 py-3 text-sm text-neutral-600 dark:text-neutral-400 max-w-[160px] truncate">{sub.quiz_title ?? `Quiz ${sub.quiz_id}`}</td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-2">
                           <span className={cn("text-sm font-semibold", pct >= 70 ? "text-emerald-600" : "text-red-600")}>

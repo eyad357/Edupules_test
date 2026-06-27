@@ -1,7 +1,7 @@
-// src/pages/ta/TAReports.tsx
+// src/pages/ta/TAReports.tsx — DB-wired
 import { useState } from 'react';
 import { Download, Send, CalendarDays, BarChart3, AlertTriangle } from 'lucide-react';
-import { taStudents } from '../../lib/taMockData';
+import { useTAStudents } from '../../lib/useTAStudents';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
@@ -20,6 +20,7 @@ const TREND = [
 ];
 
 export function TAReports() {
+  const { students: taStudents } = useTAStudents();
   const [selectedWeek, setSelectedWeek] = useState('10');
   const d = WEEK_DATA[selectedWeek] ?? WEEK_DATA['10'];
   const problemStudents = taStudents.filter(s => s.labGrade < 70);

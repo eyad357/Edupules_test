@@ -1,12 +1,14 @@
-// src/pages/ta/TACommunication.tsx
+// src/pages/ta/TACommunication.tsx — DB-wired
 import { useState } from 'react';
 import { Send, MessageCircle, Plus } from 'lucide-react';
-import { taStudents, taAnnouncements } from '../../lib/taMockData';
+import { useTAStudents } from '../../lib/useTAStudents';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
 import { Input } from '../../components/ui/Input';
 
+// Keep announcements as static defaults; DM list uses live students
+const taAnnouncements: any[] = [];
 type Tab = 'announcements' | 'forum' | 'dm';
 
 const FORUM = [
@@ -15,6 +17,7 @@ const FORUM = [
 ];
 
 export function TACommunication() {
+  const { students: taStudents } = useTAStudents();
   const [tab, setTab]           = useState<Tab>('announcements');
   const [newTitle, setNewTitle] = useState('');
   const [newMsg, setNewMsg]     = useState('');

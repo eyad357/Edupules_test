@@ -1,23 +1,71 @@
-import { useState } from 'react';
-import { Search, Filter, Mail, TrendingUp, TrendingDown, Minus, UserCheck } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, TrendingUp, TrendingDown, Minus, UserCheck } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { ProgressBar } from '../../components/ui/ProgressBar';
-import { mockStudents, mockRiskAssessments } from '../../lib/mockData';
 import { cn } from '../../lib/utils';
+
+const BASE = (import.meta as any).env?.VITE_FASTAPI_URL ?? 'http://localhost:8000/api/v1';
+const TOKEN_KEY = 'eduguard_token';
+const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` });
 
 type SortKey = 'name' | 'gpa' | 'risk' | 'year';
 type RiskFilter = 'all' | 'Normal' | 'Low' | 'High' | 'Critical';
 
+interface LiveStudent {
+  id: number; name: string; student_number: string; major: string; year: number; gpa: number;
+  risk_level: string; probability: number; trend: string;
+  grades_impact: number; attendance_impact: number; activity_impact: number;
+  dropout_probability: number; graduation_delay_likelihood: number; scholarship_eligibility: number;
+  explanation: string;
+}
+
 export function ProfessorStudents() {
+  const [rawStudents, setRawStudents] = useState<LiveStudent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState<SortKey>('risk');
   const [riskFilter, setRiskFilter] = useState<RiskFilter>('all');
-  const [selectedStudent, setSelectedStudent] = useState<string | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<number | null>(null);
 
-  const students = mockStudents.map(s => ({
+  const fetchStudents = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${BASE}/analytics/students?limit=100`, { headers: authHeader() });
+      if (!res.ok) throw new Error(`${res.status}`);
+      const data = await res.json();
+      setRawStudents((data.students ?? data ?? []).map((s: any) => ({
+        id: s.id, name: s.name, student_number: s.student_number,
+        major: s.major, year: s.year ?? 1, gpa: s.gpa,
+        risk_level: s.risk_level ?? 'Normal',
+        probability: s.risk_probability ?? s.probability ?? 0,
+        trend: s.trend ?? 'stable',
+        grades_impact: s.grades_impact ?? 0,
+        attendance_impact: s.attendance_impact ?? 0,
+        activity_impact: s.activity_impact ?? 0,
+        dropout_probability: s.dropout_probability ?? 0,
+        graduation_delay_likelihood: s.graduation_delay_likelihood ?? 0,
+        scholarship_eligibility: s.scholarship_eligibility ?? 0,
+        explanation: s.explanation ?? '',
+      })));
+    } catch { /* silently fallback to empty */ }
+    finally { setLoading(false); }
+  }, []);
+
+  useEffect(() => { fetchStudents(); }, [fetchStudents]);
+
+  const riskRank: Record<string, number> = { Critical: 3, High: 2, Low: 1, Normal: 0 };
+
+  const students = rawStudents.map(s => ({
     ...s,
-    risk: mockRiskAssessments.find(r => r.student_id === s.id),
+    risk: {
+      risk_level: s.risk_level, probability: s.probability,
+      grades_impact: s.grades_impact, attendance_impact: s.attendance_impact,
+      activity_impact: s.activity_impact, dropout_probability: s.dropout_probability,
+      graduation_delay_likelihood: s.graduation_delay_likelihood,
+      scholarship_eligibility: s.scholarship_eligibility,
+      explanation: s.explanation, trend: s.trend,
+    },
   }));
 
   const filtered = students
@@ -55,7 +103,7 @@ export function ProfessorStudents() {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-neutral-900 dark:text-white">Students</h1>
-        <p className="text-neutral-500 dark:text-neutral-400 mt-0.5">{mockStudents.length} students enrolled across your courses</p>
+        <p className="text-neutral-500 dark:text-neutral-400 mt-0.5">{rawStudents.length} students enrolled across your courses</p>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">
@@ -70,7 +118,6 @@ export function ProfessorStudents() {
           />
         </div>
         <div className="flex items-center gap-2">
-          <Filter className="w-4 h-4 text-neutral-400 shrink-0" />
           <select
             value={sortKey}
             onChange={e => setSortKey(e.target.value as SortKey)}
@@ -224,7 +271,7 @@ export function ProfessorStudents() {
                 </div>
 
                 <button className="w-full flex items-center justify-center gap-2 py-2 rounded-lg border border-neutral-200 dark:border-neutral-700 text-sm font-medium text-neutral-700 dark:text-neutral-300 hover:bg-neutral-50 dark:hover:bg-neutral-800 transition-colors">
-                  <Mail className="w-4 h-4" /> Contact Student
+                  ✉ Contact Student
                 </button>
               </div>
             </Card>

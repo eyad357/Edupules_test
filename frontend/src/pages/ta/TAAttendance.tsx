@@ -1,7 +1,7 @@
-// src/pages/ta/TAAttendance.tsx
-import { useState } from 'react';
+// src/pages/ta/TAAttendance.tsx — DB-wired
+import { useState, useEffect } from 'react';
 import { Printer, CheckCircle2, XCircle, BarChart3 } from 'lucide-react';
-import { taStudents } from '../../lib/taMockData';
+import { useTAStudents } from '../../lib/useTAStudents';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -9,13 +9,17 @@ import { StatCard } from '../../components/ui/StatCard';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 
 export function TAAttendance() {
+  const { students: taStudents } = useTAStudents();
   const [selectedSection, setSelectedSection] = useState<'Sec 1' | 'Sec 2'>('Sec 1');
   const [date, setDate] = useState('2025-10-15');
-  const [attendance, setAttendance] = useState<Record<string, boolean>>(() => {
+  const [attendance, setAttendance] = useState<Record<string, boolean>>({});
+
+  // Initialize attendance when students load
+  useEffect(() => {
     const init: Record<string, boolean> = {};
-    taStudents.forEach(s => { init[s.id] = true; });
-    return init;
-  });
+    taStudents.forEach((s: any) => { init[s.id] = true; });
+    setAttendance(init);
+  }, [taStudents]);
 
   const students     = taStudents.filter(s => s.section === selectedSection);
   const presentCount = students.filter(s => attendance[s.id]).length;
