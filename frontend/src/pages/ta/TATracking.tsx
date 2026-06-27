@@ -1,12 +1,13 @@
-// src/pages/ta/TATracking.tsx
+// src/pages/ta/TATracking.tsx — DB-wired
 import { useState } from 'react';
 import { Calendar, Send, TrendingDown } from 'lucide-react';
-import { taStudents } from '../../lib/taMockData';
+import { useTAStudents } from '../../lib/useTAStudents';
 import { Card } from '../../components/ui/Card';
 import { Button } from '../../components/ui/Button';
 import { StatCard } from '../../components/ui/StatCard';
 
 export function TATracking() {
+  const { students: taStudents, loading } = useTAStudents();
   const [notes, setNotes] = useState<Record<string, string>>({});
   const belowAvg = taStudents.filter(s => s.labGrade < 70);
 

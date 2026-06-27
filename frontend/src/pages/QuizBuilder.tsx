@@ -1,16 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { 
   Plus, Trash2, GripVertical, Clock, Calendar, Shuffle,
   Settings, Save, Eye, CheckCircle2, XCircle, FileText
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
-import { mockQuizzes, mockQuizSubmissions } from '../lib/mockData';
 import { cn } from '../lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell
 } from 'recharts';
+
+const BASE = (import.meta as any).env?.VITE_FASTAPI_URL ?? 'http://localhost:8000/api/v1';
+const TOKEN_KEY = 'eduguard_token';
+const authHeader = () => ({ Authorization: `Bearer ${localStorage.getItem(TOKEN_KEY)}` });
 
 interface Question {
   id: string;
@@ -30,6 +33,22 @@ export function QuizBuilder() {
   const [randomizeOptions, setRandomizeOptions] = useState(false);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  // Live data
+  const [mockQuizzes, setMockQuizzes] = useState<any[]>([]);
+  const [mockQuizSubmissions, setMockQuizSubmissions] = useState<any[]>([]);
+
+  const fetchAnalytics = useCallback(async () => {
+    try {
+      const [qRes, sRes] = await Promise.all([
+        fetch(`${BASE}/analytics/quizzes?limit=50`, { headers: authHeader() }),
+        fetch(`${BASE}/analytics/quiz-submissions?limit=100`, { headers: authHeader() }),
+      ]);
+      if (qRes.ok) { const d = await qRes.json(); setMockQuizzes(d.quizzes ?? d ?? []); }
+      if (sRes.ok) { const d = await sRes.json(); setMockQuizSubmissions(d.submissions ?? d ?? []); }
+    } catch { /* fallback to empty */ }
+  }, []);
+
+  useEffect(() => { fetchAnalytics(); }, [fetchAnalytics]);
 
   const addQuestion = (type: Question['type']) => {
     const newQuestion: Question = {
@@ -419,10 +438,10 @@ export function QuizBuilder() {
                 </thead>
                 <tbody>
                   {mockQuizSubmissions.map((sub, i) => {
-                    const percentage = (sub.score / sub.max_score) * 100;
+                    const percentage = sub.percentage ?? ((sub.score / sub.max_score) * 100);
                     return (
-                      <tr key={sub.id} className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
-                        <td className="py-3 px-4 text-sm text-neutral-900 dark:text-white">Student {i + 1}</td>
+                      <tr key={sub.id ?? i} className="border-b border-neutral-50 dark:border-neutral-800/50 hover:bg-neutral-50 dark:hover:bg-neutral-800/50">
+                        <td className="py-3 px-4 text-sm text-neutral-900 dark:text-white">{sub.student_name ?? `Student ${i + 1}`}</td>
                         <td className="py-3 px-4 text-sm font-medium">{sub.score}/{sub.max_score}</td>
                         <td className="py-3 px-4">
                           <div className="flex items-center gap-2">

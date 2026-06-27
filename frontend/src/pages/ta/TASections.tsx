@@ -1,7 +1,7 @@
-// src/pages/ta/TASections.tsx
+// src/pages/ta/TASections.tsx — DB-wired
 import { useState } from 'react';
 import { Plus, X } from 'lucide-react';
-import { taStudents, taSections } from '../../lib/taMockData';
+import { useTAStudents } from '../../lib/useTAStudents';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { Button } from '../../components/ui/Button';
@@ -10,6 +10,7 @@ import { Select } from '../../components/ui/Select';
 import { ProgressBar } from '../../components/ui/ProgressBar';
 
 export function TASections() {
+  const { students: taStudents, sections: taSections, loading } = useTAStudents();
   const [showModal, setShowModal] = useState(false);
 
   return (
@@ -25,7 +26,7 @@ export function TASections() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {taSections.map(sec => {
+        {(taSections.length > 0 ? taSections : [{id:"1",name:"Sec 1",course:"CS201",enrolled:0,avg_grade:0,at_risk:0},{id:"2",name:"Sec 2",course:"CS201",enrolled:0,avg_grade:0,at_risk:0}]).map(sec => {
           const students = taStudents.filter(s => s.section === sec.name);
           return (
             <Card key={sec.id} title={sec.name} subtitle={sec.course}>

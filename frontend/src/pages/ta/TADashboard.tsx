@@ -1,11 +1,12 @@
-// src/pages/ta/TADashboard.tsx
+// src/pages/ta/TADashboard.tsx — DB-wired via useTAStudents hook
 import { useNavigate } from 'react-router-dom';
-import { taStudents } from '../../lib/taMockData';
+import { useTAStudents } from '../../lib/useTAStudents';
 import { Users, AlertTriangle, BarChart3, Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { StatCard } from '../../components/ui/StatCard';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
+
 
 const weekData = [
   { week: 'W1', sec1: 78, sec2: 74 },
@@ -16,17 +17,21 @@ const weekData = [
 ];
 
 const quickActions = [
-  { label: 'Take Attendance',    path: '/ta/attendance',   color: 'bg-red-600'    },
-  { label: 'Enter Grades',       path: '/ta/grading',      color: 'bg-blue-600'   },
-  { label: 'Send Announcement',  path: '/ta/communication',color: 'bg-green-600'  },
-  { label: 'Weekly Report',      path: '/ta/reports',      color: 'bg-purple-600' },
+  { label: 'Take Attendance',   path: '/ta/attendance',    color: 'bg-red-600'    },
+  { label: 'Enter Grades',      path: '/ta/grading',       color: 'bg-blue-600'   },
+  { label: 'Send Announcement', path: '/ta/communication', color: 'bg-green-600'  },
+  { label: 'Weekly Report',     path: '/ta/reports',       color: 'bg-purple-600' },
 ];
 
 export function TADashboard() {
   const navigate = useNavigate();
-  const atRisk   = taStudents.filter(s => s.status !== 'good');
-  const avgGrade = Math.round(taStudents.reduce((a, b) => a + b.labGrade, 0) / taStudents.length);
-  const alerts   = taStudents.filter(s => s.absencePct >= 15);
+  const { students: taStudents, loading } = useTAStudents();
+
+  const atRisk   = taStudents.filter((s: any) => s.status !== 'good');
+  const avgGrade = taStudents.length > 0
+    ? Math.round(taStudents.reduce((a: number, b: any) => a + b.labGrade, 0) / taStudents.length)
+    : 0;
+  const alerts = taStudents.filter((s: any) => s.absencePct >= 15);
 
   return (
     <div className="space-y-6">
@@ -37,7 +42,7 @@ export function TADashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="My Students"  value={taStudents.length} subtitle="Across 2 sections"                         icon={Users}         color="red"    />
-        <StatCard title="At Risk"      value={atRisk.length}     subtitle={`${taStudents.filter(s=>s.status==='ban').length} at ban threshold`} icon={AlertTriangle} color="orange" />
+        <StatCard title="At Risk"      value={atRisk.length}     subtitle={`${taStudents.filter((s:any)=>s.status==='ban').length} at ban threshold`} icon={AlertTriangle} color="orange" />
         <StatCard title="Avg Grade"    value={`${avgGrade}%`}    subtitle="Lab + Quiz combined"                       icon={BarChart3}     color="blue"   />
         <StatCard title="Sessions"     value="18"                subtitle="This semester"                              icon={Calendar}      color="green"  />
       </div>
