@@ -17,7 +17,7 @@ const CREDENTIALS = [
   { role: 'admin'     as Role, email: 'admin@eduguard.edu',         label: 'Administrator',      password: '1'    },
   { role: 'professor' as Role, email: 'j.anderson@eduguard.edu',    label: 'Professor',          password: '11'   },
   { role: 'ta'        as Role, email: 'ta.marcus@eduguard.edu',     label: 'Teaching Assistant', password: '111'  },
-  { role: 'student'   as Role, email: 'alice@student.eduguard.edu', label: 'Student',            password: '1111' },
+  { role: 'student'   as Role, email: 'ahmed.hassan@student.eduguard.edu', label: 'Student',            password: '1111' },
 ];
 
 const ROLE_PATHS: Record<Role, string> = {

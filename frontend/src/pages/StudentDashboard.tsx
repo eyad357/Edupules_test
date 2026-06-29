@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
-  TrendingDown, Target, Award, Flame,
-  BookOpen, Clock, Zap, Shield, Calendar
+  Target, Award, Flame,
+  BookOpen, Shield, Calendar
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';

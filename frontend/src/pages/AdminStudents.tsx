@@ -12,7 +12,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import {
-  Search, Download, UserPlus, ArrowUpRight, ArrowDownRight,
+  Search, Download, ArrowUpRight, ArrowDownRight,
   Minus, RefreshCw, AlertCircle, Loader2, X, ChevronLeft,
   ChevronRight, Filter, Pencil, Trash2, Check, Save,
   UserCircle2,

@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from 'react';
 import { 
-  Plus, Trash2, GripVertical, Clock, Calendar, Shuffle,
-  Settings, Save, Eye, CheckCircle2, XCircle, FileText
+  Plus, Trash2, GripVertical, Clock, Shuffle,
+  Settings, Save, Eye, FileText
 } from 'lucide-react';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
+import { ProgressBar } from '../components/ui/ProgressBar';
 import { cn } from '../lib/utils';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell
+  Cell
 } from 'recharts';
 
 const BASE = (import.meta as any).env?.VITE_FASTAPI_URL ?? 'http://localhost:8000/api/v1';
@@ -34,7 +35,6 @@ export function QuizBuilder() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   // Live data
-  const [mockQuizzes, setMockQuizzes] = useState<any[]>([]);
   const [mockQuizSubmissions, setMockQuizSubmissions] = useState<any[]>([]);
 
   const fetchAnalytics = useCallback(async () => {
@@ -43,7 +43,7 @@ export function QuizBuilder() {
         fetch(`${BASE}/analytics/quizzes?limit=50`, { headers: authHeader() }),
         fetch(`${BASE}/analytics/quiz-submissions?limit=100`, { headers: authHeader() }),
       ]);
-      if (qRes.ok) { const d = await qRes.json(); setMockQuizzes(d.quizzes ?? d ?? []); }
+      if (qRes.ok) { await qRes.json(); /* quizzes reserved for future use */ }
       if (sRes.ok) { const d = await sRes.json(); setMockQuizSubmissions(d.submissions ?? d ?? []); }
     } catch { /* fallback to empty */ }
   }, []);

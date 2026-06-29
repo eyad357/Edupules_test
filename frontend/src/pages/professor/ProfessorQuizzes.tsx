@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Clock, Users, CheckCircle, XCircle, Eye, ClipboardList } from 'lucide-react';
+import { Plus, Clock, Users, CheckCircle, XCircle, Eye, ClipboardList, Edit } from 'lucide-react';
 import { Card } from '../../components/ui/Card';
 import { Badge } from '../../components/ui/Badge';
 import { cn } from '../../lib/utils';
@@ -23,6 +23,7 @@ interface LiveQuiz {
   course_code: string; course_name: string; duration_minutes: number;
   total_points: number; start_time: string | null; end_time: string | null;
   submission_count: number; avg_score: number | null;
+  attempts_limit?: number | null;
 }
 
 interface LiveSubmission {
@@ -36,10 +37,8 @@ export function ProfessorQuizzes() {
   const [activeTab, setActiveTab] = useState<'overview' | 'results'>('overview');
   const [mockQuizzes, setMockQuizzes] = useState<LiveQuiz[]>([]);
   const [mockQuizSubmissions, setMockQuizSubmissions] = useState<LiveSubmission[]>([]);
-  const [loading, setLoading] = useState(true);
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
     try {
       const [qRes, sRes] = await Promise.all([
         fetch(`${BASE}/analytics/quizzes?limit=50`, { headers: authHeader() }),
@@ -48,7 +47,6 @@ export function ProfessorQuizzes() {
       if (qRes.ok) { const d = await qRes.json(); setMockQuizzes(d.quizzes ?? d ?? []); }
       if (sRes.ok) { const d = await sRes.json(); setMockQuizSubmissions(d.submissions ?? d ?? []); }
     } catch { /* fallback */ }
-    finally { setLoading(false); }
   }, []);
 
   useEffect(() => { fetchData(); }, [fetchData]);
@@ -129,14 +127,14 @@ export function ProfessorQuizzes() {
                   </div>
                   <div className="text-center p-2 bg-neutral-50 dark:bg-neutral-800 rounded-lg">
                     <CheckCircle className="w-3.5 h-3.5 text-neutral-400 mx-auto mb-1" />
-                    <p className="text-xs font-medium text-neutral-900 dark:text-white">{quiz.attempts_limit}x</p>
+                    <p className="text-xs font-medium text-neutral-900 dark:text-white">{quiz.attempts_limit ?? '∞'}x</p>
                   </div>
                 </div>
 
                 <div className="mt-3 pt-3 border-t border-neutral-100 dark:border-neutral-800">
                   <p className="text-xs text-neutral-500">
-                    Starts: {new Date(quiz.start_time).toLocaleDateString()} · 
-                    Ends: {new Date(quiz.end_time).toLocaleDateString()}
+                    Starts: {quiz.start_time ? new Date(quiz.start_time).toLocaleDateString() : '—'} · 
+                    Ends: {quiz.end_time ? new Date(quiz.end_time).toLocaleDateString() : '—'}
                   </p>
                 </div>
 
@@ -212,7 +210,7 @@ export function ProfessorQuizzes() {
                           <span className="text-xs text-neutral-400">({pct}%)</span>
                         </div>
                       </td>
-                      <td className="px-4 py-3 text-xs text-neutral-500">{formatDateTime(sub.submitted_at)}</td>
+                      <td className="px-4 py-3 text-xs text-neutral-500">{sub.submitted_at ? formatDateTime(sub.submitted_at) : '—'}</td>
                       <td className="px-4 py-3">
                         {pct >= 70
                           ? <span className="flex items-center gap-1 text-xs text-emerald-600 font-medium"><CheckCircle className="w-3.5 h-3.5" /> Pass</span>
