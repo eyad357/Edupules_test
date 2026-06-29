@@ -23,8 +23,9 @@ from app.db.database import get_db
 from app.models.models import (
     User, Student, Professor, Advisor, Course, Enrollment,
     Attendance, RiskAssessment, InterventionPlan, Notification,
-    ActivityLog, Quiz, QuizSubmission, UserRole, Question
+    ActivityLog, Quiz, QuizSubmission, UserRole, Question, Department
 )
+from app.models.sprint4_models import SemesterSnapshot
 
 router = APIRouter()
 
@@ -1626,6 +1627,29 @@ def student_dashboard(
     if not student:
         raise HTTPException(status_code=404, detail="Student profile not found")
 
+    # ── Department ─────────────────────────────────────────────────────────
+    department = (
+        db.query(Department).filter(Department.id == student.department_id).first()
+        if student.department_id else None
+    )
+
+    # ── Advisor info ───────────────────────────────────────────────────────
+    advisor_name: str | None = None
+    if student.advisor_id:
+        advisor_user = (
+            db.execute(
+                text("""
+                    SELECT u.name FROM users u
+                    JOIN advisors a ON a.user_id = u.id
+                    WHERE a.id = :adv_id
+                """),
+                {"adv_id": student.advisor_id},
+            ).fetchone()
+        )
+        if advisor_user:
+            advisor_name = advisor_user[0]
+
+    # ── Risk assessment (most recent) ──────────────────────────────────────
     risk = (
         db.query(RiskAssessment)
         .filter(RiskAssessment.student_id == student.id)
@@ -1633,61 +1657,176 @@ def student_dashboard(
         .first()
     )
 
-    enrollments = (
+    # ── Enrollments (active + completed) ──────────────────────────────────
+    all_enrollments = (
         db.query(Enrollment, Course)
         .join(Course, Enrollment.course_id == Course.id)
-        .filter(Enrollment.student_id == student.id, Enrollment.status == "active")
+        .filter(Enrollment.student_id == student.id)
+        .order_by(Enrollment.id.desc())
         .all()
     )
+    active_enrollments  = [(e, c) for e, c in all_enrollments if e.status == "active"]
+    completed_enrollments = [(e, c) for e, c in all_enrollments if e.status == "completed"]
 
-    total_att = db.query(func.count(Attendance.id)).filter(Attendance.student_id == student.id).scalar() or 1
+    # ── Attendance rate ────────────────────────────────────────────────────
+    total_att   = db.query(func.count(Attendance.id)).filter(Attendance.student_id == student.id).scalar() or 1
     present_att = db.query(func.count(Attendance.id)).filter(
-        Attendance.student_id == student.id, Attendance.status.in_(["present", "late"])
+        Attendance.student_id == student.id,
+        Attendance.status.in_(["present", "late"]),
     ).scalar() or 0
     att_rate = round((present_att / total_att) * 100, 1)
 
-    notifs = (
-        db.query(Notification)
-        .filter(Notification.user_id == current_user.id, Notification.read == False)
-        .order_by(Notification.created_at.desc())
-        .limit(5)
-        .all()
+    # ── Semester snapshots (term GPA history) ──────────────────────────────
+    snapshots = (
+        db.execute(
+            text("""
+                SELECT ss.term_gpa, ss.cgpa_after_term,
+                       ss.credits_attempted, ss.credits_earned, ss.credits_failed,
+                       ss.cumulative_attempted, ss.cumulative_earned,
+                       ss.academic_standing, ss.honors_level, ss.dean_list_eligible,
+                       t.code AS term_code, t.name AS term_name, t.academic_year
+                FROM semester_snapshots ss
+                JOIN academic_terms t ON t.id = ss.term_id
+                WHERE ss.student_id = :sid
+                ORDER BY t.academic_year ASC, t.id ASC
+            """),
+            {"sid": student.id},
+        ).fetchall()
     )
 
+    term_gpa_history = [
+        {
+            "term":              row.term_code,
+            "term_name":         row.term_name,
+            "academic_year":     row.academic_year,
+            "term_gpa":          float(row.term_gpa),
+            "cgpa":              float(row.cgpa_after_term),
+            "credits_attempted": row.credits_attempted,
+            "credits_earned":    row.credits_earned,
+            "credits_failed":    row.credits_failed,
+            "cumulative_attempted": row.cumulative_attempted,
+            "cumulative_earned": row.cumulative_earned,
+            "standing":          row.academic_standing,
+            "honors":            row.honors_level,
+            "dean_list":         row.dean_list_eligible,
+        }
+        for row in snapshots
+    ]
+
+    # ── Intervention plans ─────────────────────────────────────────────────
     active_plans = (
         db.query(InterventionPlan)
-        .filter(InterventionPlan.student_id == student.id, InterventionPlan.status.in_(["active", "pending"]))
+        .filter(
+            InterventionPlan.student_id == student.id,
+            InterventionPlan.status.in_(["active", "pending"]),
+        )
+        .order_by(InterventionPlan.created_at.desc())
         .all()
     )
 
+    # ── Unread notifications ───────────────────────────────────────────────
+    unread_count = (
+        db.query(func.count(Notification.id))
+        .filter(Notification.user_id == current_user.id, Notification.read == False)
+        .scalar() or 0
+    )
+
+    # ── Quiz performance ───────────────────────────────────────────────────
+    quiz_stats = db.execute(
+        text("""
+            SELECT COUNT(*)                     AS total_quizzes,
+                   ROUND(AVG(percentage), 1)    AS avg_percentage,
+                   SUM(CASE WHEN passed THEN 1 ELSE 0 END) AS passed_count
+            FROM quiz_submissions
+            WHERE student_id = :sid
+        """),
+        {"sid": student.id},
+    ).fetchone()
+
+    # Latest snapshot for credit hour summary
+    latest_snap = snapshots[-1] if snapshots else None
+
     return {
+        # ── Identity ──────────────────────────────────────────────────────
         "student": {
-            "id":             student.id,
-            "name":           current_user.name,
-            "student_number": student.student_number,
-            "major":          student.major,
-            "year":           student.year,
-            "gpa":            student.gpa,
-            "email":          current_user.email,
+            "id":               student.id,
+            "name":             current_user.name,
+            "email":            current_user.email,
+            "student_number":   student.student_number,
+            "major":            student.major,
+            "year":             student.year,
+            "gpa":              float(student.gpa) if student.gpa else 0.0,
+            "cgpa":             float(latest_snap.cgpa_after_term) if latest_snap else float(student.gpa or 0),
+            "is_scholarship":   student.is_scholarship,
+            "enrollment_date":  student.enrollment_date.isoformat() if student.enrollment_date else None,
+            "phone":            student.phone,
+            "advisor":          advisor_name,
+            "department":       department.name if department else student.major,
+            "department_code":  department.code if department else None,
+            "academic_standing": latest_snap.academic_standing if latest_snap else "active",
+            "total_credits_earned":    latest_snap.cumulative_earned    if latest_snap else 0,
+            "total_credits_attempted": latest_snap.cumulative_attempted if latest_snap else 0,
+            "credits_to_graduation": max(0, 134 - (latest_snap.cumulative_earned if latest_snap else 0)),
         },
+        # ── Risk ──────────────────────────────────────────────────────────
         "risk": {
-            "level":       risk.risk_level.value if risk and risk.risk_level else "Normal",
-            "probability": float(risk.probability) if risk and risk.probability else 0.0,
-            "trend":       risk.trend if risk else "stable",
+            "level":                        risk.risk_level.value if risk and risk.risk_level else "Normal",
+            "probability":                  float(risk.probability)             if risk and risk.probability else 0.0,
+            "trend":                        risk.trend                          if risk else "stable",
+            "grades_impact":                float(risk.grades_impact)           if risk and risk.grades_impact else 0.0,
+            "attendance_impact":            float(risk.attendance_impact)       if risk and risk.attendance_impact else 0.0,
+            "dropout_probability":          float(risk.dropout_probability)     if risk and risk.dropout_probability else 0.0,
+            "graduation_delay_likelihood":  float(risk.graduation_delay_likelihood) if risk and risk.graduation_delay_likelihood else 0.0,
+            "scholarship_eligibility":      float(risk.scholarship_eligibility) if risk and risk.scholarship_eligibility else 0.0,
+            "explanation":                  risk.explanation                    if risk else None,
+            "recommendations":              risk.recommendations                if risk else [],
         } if risk else None,
+        # ── Active courses ────────────────────────────────────────────────
         "enrollments": [
             {
-                "course_id":   c.id,
-                "code":        c.code,
-                "name":        c.name,
-                "grade":       e.grade,
-                "semester":    c.semester,
+                "course_id": c.id,
+                "code":      c.code,
+                "name":      c.name,
+                "grade":     float(e.grade) if e.grade is not None else None,
+                "semester":  c.semester,
+                "status":    e.status,
             }
-            for e, c in enrollments
+            for e, c in active_enrollments
         ],
-        "attendance_rate":    att_rate,
-        "unread_notifications": len(notifs),
-        "active_interventions": len(active_plans),
+        # ── Completed courses ─────────────────────────────────────────────
+        "completed_courses": [
+            {
+                "course_id": c.id,
+                "code":      c.code,
+                "name":      c.name,
+                "grade":     float(e.grade) if e.grade is not None else None,
+                "semester":  c.semester,
+            }
+            for e, c in completed_enrollments
+        ],
+        # ── Term GPA history (for chart) ──────────────────────────────────
+        "term_gpa_history": term_gpa_history,
+        # ── Attendance ────────────────────────────────────────────────────
+        "attendance_rate": att_rate,
+        # ── Intervention plans ────────────────────────────────────────────
+        "intervention_plans": [
+            {
+                "id":          p.id,
+                "title":       p.title,
+                "description": p.description,
+                "status":      p.status.value if hasattr(p.status, "value") else str(p.status),
+                "priority":    p.priority.value if hasattr(p.priority, "value") else str(p.priority),
+                "deadline":    p.deadline.isoformat() if p.deadline else None,
+            }
+            for p in active_plans
+        ],
+        # ── Quick stats ───────────────────────────────────────────────────
+        "unread_notifications": unread_count,
+        "quiz_stats": {
+            "total":       int(quiz_stats.total_quizzes or 0),
+            "avg_score":   float(quiz_stats.avg_percentage or 0),
+            "passed":      int(quiz_stats.passed_count or 0),
+        },
     }
 
 

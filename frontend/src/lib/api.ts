@@ -30,9 +30,14 @@ export async function apiFetch<T = unknown>(
   const res = await fetch(`${BASE_URL}${path}`, { ...options, headers });
 
   if (res.status === 401) {
-    localStorage.removeItem(TOKEN_KEY);
-    localStorage.removeItem('eduguard_user');
-    window.location.href = '/auth';
+    // Auth endpoints (login/logout) legitimately return 401 on bad credentials.
+    // Do NOT redirect for those calls; let the caller handle the error.
+    const isAuthEndpoint = path.startsWith('/auth/');
+    if (!isAuthEndpoint) {
+      localStorage.removeItem(TOKEN_KEY);
+      localStorage.removeItem('eduguard_user');
+      window.location.href = '/auth';
+    }
     throw new Error('Session expired. Please log in again.');
   }
 
